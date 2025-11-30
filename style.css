@@ -351,6 +351,18 @@ input.adaptive-text-input {
     text-align: center;
 }
 
+.imbue-bonus-badge {
+    background-color: var(--button-bg);
+    color: var(--button-text-color);
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-left: 5px; /* Add some space */
+    cursor: help; /* Indicates it's a helpful element */
+}
+
+
 .checkbox-label /* The text label next to a checkbox. */ {
     flex-basis: auto !important;
     /* Override the fixed width for checkbox labels in a row */
@@ -743,4 +755,3 @@ input:checked+.slider:before /* Changes the icon on the theme switch (e.g., from
         padding: 1rem;
     }
 }
-

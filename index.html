@@ -238,11 +238,12 @@
                 <div class="stats-group">
                     <div class="input-group-row">
                         <label for="imbue-dice-count">Imbue Dice</label>
-                        <input type="number" id="imbue-dice-count" value="0" class="small-input"
-                            title="Number of imbue dice">
+                        <input type="number" id="imbue-dice-count" value="0" class="small-input" min="0" title="Number of *bonus* imbue dice from gear, feats, and enhancements.">
                         <span class="dice-separator">d</span>
                         <input type="number" id="imbue-die-type" value="6" class="small-input"
                             title="Type of imbue dice (e.g., 6 for d6, 8 for d8)">
+                        <span class="plus-symbol hidden">+</span>
+                        <span id="imbue-toggle-bonus" class="imbue-bonus-badge hidden" title="The base die from an active imbue toggle. This is not counted if bonus dice are 0 and does not contribute to Scaled Dice Damage calculations.">1</span>
                     </div>
                     <div class="input-group-row">
                         <label for="imbue-scaling">Scaling %</label>

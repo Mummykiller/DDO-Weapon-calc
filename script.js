@@ -125,6 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.imbueScalingInput = get('imbue-scaling');
             this.imbueUsesSpellpowerCheckbox = get('imbue-uses-spellpower');
             this.imbueCritsCheckbox = get('imbue-crits');
+            this.imbueToggleBonusSpan = get('imbue-toggle-bonus');
             this.calculateBtn = get('calculate-btn');
             this.avgBaseDamageSpan = get('avg-base-damage');
             this.avgSneakDamageSpan = get('avg-sneak-damage');
@@ -331,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 grazePercent: (parseFloat(this.grazePercentInput.value) || 0) / 100,
                 reaperSkulls: parseInt(this.reaperSkullsSelect.value) || 0,
                 imbueDiceCount: parseInt(this.imbueDiceCountInput.value) || 0,
-                imbueDieType: parseInt(this.imbueDieTypeInput.value) || 0,
+                imbueDieType: parseInt(this.imbueDieTypeInput.value) || 6,
                 imbueScaling: (parseFloat(this.imbueScalingInput.value) || 100) / 100,
                 imbueCrits: this.imbueCritsCheckbox.checked,
                 imbueUsesSpellpower: this.imbueUsesSpellpowerCheckbox.checked,
@@ -392,8 +393,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const sneakPortion = (sneakDiceDmg + sneakBonusDmg) * (1 + (meleePower * 1.5) / 100);
 
             const imbueDice = imbueDiceCount * (imbueDieType + 1) / 2;
+            const totalImbueDiceCount = imbueDiceCount > 0 ? imbueDiceCount + 1 : 0;
+            const totalImbueDiceAverage = totalImbueDiceCount * (imbueDieType + 1) / 2;
+
             const powerForImbue = imbueUsesSpellpower ? spellPower : meleePower;
-            const imbuePortion = imbueDice * (1 + (powerForImbue * imbueScaling) / 100);
+            const imbuePortion = totalImbueDiceAverage * (1 + (powerForImbue * imbueScaling) / 100);
 
             let totalAvgScaledDiceDmg = 0;
             let totalAddedScaledDice = 0;
@@ -439,7 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const finalScaledDiceBreakdown = scaledDiceBreakdownText.join(' +<br>');
 
-            return { baseDmg, weaponPortion, seekerPortion, sneakDiceDmg, sneakPortion, imbueDice, imbuePortion, powerForImbue, totalAvgScaledDiceDmg, addedDiceBreakdown, finalScaledDiceBreakdown };
+            return { baseDmg, weaponPortion, seekerPortion, sneakDiceDmg, sneakPortion, imbueDice: totalImbueDiceAverage, imbuePortion, powerForImbue, totalAvgScaledDiceDmg, addedDiceBreakdown, finalScaledDiceBreakdown, totalImbueDiceCount };
         }
 
         /**
@@ -513,7 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             this.weaponScalingSpan.textContent = `${baseDmg.toFixed(2)} * (1 + (${meleePower} / 100)) = ${portions.weaponPortion.toFixed(2)}`;
             this.sneakScalingSpan.textContent = `(${sneakDiceDmg.toFixed(2)} + ${sneakBonusDmg.toFixed(2)}) * (1 + (${meleePower} * 1.5) / 100) = ${sneakPortion.toFixed(2)}`;
-            this.imbueScalingBreakdownSpan.textContent = `${imbueDice.toFixed(2)} * (1 + (${powerForImbue} * ${imbueScaling * 100}%) / 100) = ${imbuePortion.toFixed(2)}`;
+            this.imbueScalingBreakdownSpan.textContent = `${portions.imbueDice.toFixed(2)} (from ${portions.totalImbueDiceCount}d${inputs.imbueDieType}) * (1 + (${powerForImbue} * ${imbueScaling * 100}%) / 100) = ${imbuePortion.toFixed(2)}`;
             this.scaledDiceScalingBreakdownSpan.innerHTML = portions.finalScaledDiceBreakdown || '0';
             this.imbuePowerSourceSpan.textContent = imbueUsesSpellpower ? `Spell Power (${spellPower})` : `Melee Power (${meleePower})`;
             this.scaledDiceAddedInputDisplaySpan.textContent = portions.totalAddedScaledDice;
@@ -525,6 +529,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             this.reaperPenaltySpan.textContent = `${((1 - averages.reaperMultiplier) * 100).toFixed(1)}% Reduction`;
+
+            // Show/hide the "+1" for the imbue toggle
+            const showImbueToggleBonus = inputs.imbueDiceCount > 0;
+            this.imbueToggleBonusSpan.classList.toggle('hidden', !showImbueToggleBonus);
+            this.imbueToggleBonusSpan.previousElementSibling.classList.toggle('hidden', !showImbueToggleBonus); // Hides the '+' symbol
+
         }
 
         calculateDdoDamage() {
