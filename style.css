@@ -1,0 +1,746 @@
+:root /* Defines common color and spacing settings for the entire page. */ {
+    --bg-color: #f0f2f5;
+    --container-bg: #ffffff;
+    --text-color: #333;
+    --header-color: #1a237e;
+    --stats-group-bg: #f9f9f9;
+    --border-color: #e0e0e0;
+    --input-border-color: #ccc;
+    --label-color: #555;
+    --button-bg: #3949ab;
+    --button-hover-bg: #283593;
+    --button-text-color: white;
+    --accent-color: #c62828;
+    --table-header-bg: #e8eaf6;
+    --table-header-text: #3949ab;
+    --table-row-odd-bg: #f9f9f9;
+    --crit-row-bg: #ffebee;
+    --crit-row-text: #c62828;
+    --graze-row-bg: #fffde7;
+    --graze-row-text: #f57f17;
+}
+
+.dark-mode /* Changes the colors and look of the page when dark mode is turned on. */ {
+    --bg-color: #121212;
+    --container-bg: #1e1e1e;
+    --text-color: #e0e0e0;
+    --header-color: #9fa8da;
+    --stats-group-bg: #2a2a2a;
+    --border-color: #424242;
+    --input-border-color: #555;
+    --label-color: #bbb;
+    --button-bg: #5c6bc0;
+    --button-hover-bg: #7986cb;
+    --accent-color: #ef9a9a;
+    --table-header-bg: #3949ab;
+    --table-header-text: #e8eaf6;
+    --table-row-odd-bg: #2c2c2c;
+    --crit-row-bg: #4a1f1f;
+    --crit-row-text: #ef9a9a;
+    --graze-row-bg: #4a442a;
+    --graze-row-text: #ffd54f;
+}
+
+body /* The main content area of the entire webpage. */ {
+    font-family: sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+.page-wrapper /* The invisible box that holds all the main content of the page, keeping it neatly organized. */ {
+    width: 100%;
+    max-width: 1920px;
+    padding: 2rem;
+}
+
+.set-navigation /* Controls the bar at the top of the page that helps you switch between different calculator sections. */ {
+    display: flex;
+    gap: 0.5rem; /* Add consistent spacing between elements */
+    margin-bottom: -1px;
+    /* Overlap the container's border */
+    position: relative;
+    z-index: 1;
+    justify-content: flex-start; /* Aligns tabs to the left */
+}
+
+.nav-tab /* A single clickable button in the navigation bar that lets you pick a calculator section. */ {
+    background-color: var(--stats-group-bg);
+    border: 1px solid var(--border-color);
+    border-bottom: none;
+    padding: 0.75rem 1.5rem;
+    padding-top: calc(0.75rem - 3px);
+    /* Adjust for border */
+    cursor: pointer;
+    font-size: 1rem;
+    color: var(--label-color);
+    border-radius: 8px 8px 0 0;
+    margin-right: 0.5rem;
+    border-top: 3px solid transparent;
+    /* Placeholder for active indicator */
+    transition: border-color 0.2s, color 0.2s, background-color 0.2s;
+    position: relative;
+    /* Needed for absolute positioning of the close button */
+}
+
+.nav-tab:not(.active):hover /* Controls how a navigation tab looks ONLY when your mouse pointer is over it, and it's not the currently selected tab. */ {
+    background-color: var(--bg-color);
+    border-top-color: var(--border-color);
+    color: var(--text-color);
+}
+
+.nav-tab.active .tab-name /* Controls the name of the currently selected navigation tab. */ {
+
+    color: var(--header-color);
+
+}
+
+
+
+.nav-action-btn /* A button in the navigation area used for actions like adding a new calculator. */ {
+    background-color: var(--stats-group-bg);
+    border: 1px solid var(--border-color);
+    width: 140px; /* Fixed width for square shape */
+    height: 40px; /* Fixed height for square shape */
+    padding: 0; /* Remove padding to allow fixed width/height to control size */
+    cursor: pointer; /* Pointer cursor on hover */
+    font-size: 1rem; /* Standard font size for text/emoji */
+    color: var(--label-color); /* Text color */ 
+    border-radius: 8px; /* Rounded corners */
+    display: flex; /* Use flexbox to center content */
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    margin-right: 1px; /* Small margin to separate from tabs */
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s; /* Smooth transitions */
+    
+}
+
+.nav-action-btn:first-of-type /* Controls the very first action button in the navigation area, often pushing it to the right. */ {
+    margin-left: auto; /* Pushes this and subsequent buttons to the right */
+}
+
+
+#add-spell-set-btn /* The unique button that adds a new spell calculator section. */ {
+    background-color: blue;
+    
+}
+
+
+.tab-name /* The display name for each calculator tab. */ {
+    display: inline-block;
+    padding: 0 0.5rem;
+    padding-left: 1.5rem;
+    /* Make space for the close button */
+    min-width: 50px;
+    border-radius: 3px;
+}
+
+.tab-name:focus /* Controls how a tab's name looks when you have it selected or are typing in it. */ {
+    outline: 1px solid var(--accent-color);
+    background-color: var(--container-bg);
+}
+
+.close-tab-btn /* The small button on each tab used to close or remove that calculator section. */ {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    color: var(--accent-color);
+    background: none;
+    border: none;
+    font-weight: bold;
+    border-radius: 50%;
+    cursor: pointer;
+    padding: 0;
+    font-size: 1.2rem;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    transition: background-color 0.2s;
+}
+
+.close-tab-btn:hover /* Controls how the close button on a tab looks ONLY when your mouse pointer is over it. */ {
+    background-color: var(--border-color);
+}
+
+.nav-tab.spell-tab-indicator /* Changes the appearance of a navigation tab when it represents a spell calculator. */ {
+    background-color: var(--button-bg);
+    color: var(--button-text-color);
+}
+
+.nav-tab.spell-tab-indicator.active /* Changes the appearance of a spell calculator tab ONLY when it is the currently selected tab. */ {
+    background-color: var(--button-bg);
+    color: var(--button-text-color);
+    border-top-color: var(--button-bg);
+}
+
+/* Original active tab styles for weapon tabs */
+.nav-tab.active /* Changes the appearance of a navigation tab ONLY when it is the currently selected tab. */ {
+    background-color: var(--container-bg);
+    color: var(--header-color);
+    border-bottom: 1px solid var(--container-bg);
+    /* Make it look connected */
+    border-top-color: var(--accent-color);
+    /* Highlight for active tab */
+    font-weight: bold;
+}
+
+/* --- Drag and Drop Styles --- */
+.nav-tab.dragging /* Hides the original tab from the layout while it's being dragged. The browser shows a 'ghost' image, and a placeholder appears in its place. */ {
+    position: absolute !important;
+    left: -9999px;
+    top: -9999px;
+    opacity: 0;
+}
+
+.nav-tab-placeholder /* An empty space shown in the navigation bar ONLY when you are dragging a tab, to show where it will land. */ {
+    background-color: transparent;
+    border: 2px dashed var(--accent-color);
+    border-radius: 8px 8px 0 0;
+    margin-right: 0.5rem;
+    box-sizing: border-box;
+    /* Ensure border is included in width/height */
+}
+
+.calculator-container /* The main box that holds all the calculator input fields and results. */ {
+    background-color: var(--container-bg);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    padding: 2rem;
+}
+
+.title-wrapper /* The invisible box that arranges the title and other elements next to it. */ {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+h1 /* The main heading or title for a section of the page. */ {
+    color: var(--header-color);
+    margin: 0;
+    /* Reset margin for h1 */
+}
+
+.subtitle /* A smaller, secondary title or description for a section. */ {
+    margin-bottom: 1.5rem;
+}
+
+.calculator-set /* A specific group of calculator settings and results, usually hidden until selected. */ {
+    display: none;
+}
+
+.calculator-set.active /* A specific group of calculator settings and results that is currently being shown. */ {
+    display: block;
+}
+
+#calculate-btn /* The unique button that you click to perform the damage calculation. */ {
+    margin-top: 0.5rem;
+}
+
+.stats-group /* A box that groups related statistics or input fields together. */ {
+    background-color: var(--stats-group-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.input-group-row /* A row that holds multiple input fields or labels, keeping them organized horizontally. */ {
+    display: flex;
+    align-items: center;
+    max-width: fit-content;
+    width: auto;
+    gap: 5px;
+    flex-wrap: wrap;
+    /* Allow items to wrap onto new lines */
+}
+
+.input-group-row:not(:last-child) /* Controls how input rows look ONLY if they are not the very last row in a group, adding space below them. */ {
+    margin-bottom: 0.6rem;
+}
+
+.input-group-row label /* The text next to an input field in a row, describing what to type in. */ {
+
+    flex-basis: 150px;
+    /* Give labels a fixed width */
+    flex-shrink: 0;
+}
+
+.example-text /* Small, helpful text providing an example or extra information below an input field. */ {
+    font-size: 0.8rem;
+    color: var(--label-color);
+    opacity: 0.8;
+    text-align: center;
+    margin-bottom: 0.2rem;
+}
+
+.input-group /* A container for a single input field and its label. */ {
+    margin-bottom: 0.75rem;
+}
+
+.input-group label /* The text that describes a single input field. */ {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    color: var(--label-color);
+}
+
+/* Unified base styles for all input types (text, number, etc.) */
+input { /* Apply to all inputs by default */
+    border: 1px solid var(--input-border-color);
+    border-radius: 4px;
+    box-sizing: border-box;
+    background-color: var(--container-bg);
+    color: var(--text-color);
+    padding: 0.5rem; /* Default padding */
+}
+
+/* Specific styles for inputs within an .input-group */
+.input-group input {
+    width: 100%; /* Standalone inputs take full width */
+}
+
+/* Specific styles for inputs within an .input-group-row (flex container) */
+.input-group-row input {
+    padding: 0.3rem; /* More compact padding in rows */
+    flex-grow: 0; /* Prevent growing by default */
+    flex-shrink: 1; /* Allow shrinking */
+    width: auto; /* Default to auto width in flex row */
+}
+
+/* Inputs specifically marked as 'small-input' (e.g., fixed-width number inputs) */
+input.small-input {
+    width: 50px; /* Fixed width for small inputs */
+    flex-shrink: 0; /* Prevent from shrinking */
+}
+
+/* Inputs that are dynamically sized by JavaScript */
+input.adaptive-text-input {
+    max-width: 150px; /* Set a reasonable max-width for adaptive inputs */
+    /* JS will set the width property directly */
+}
+
+/* Fallback/default for non-adaptive text inputs in rows */
+.input-group-row input[type="text"]:not(.adaptive-text-input) {
+    min-width: 50px;
+    max-width: 150px;
+}
+
+
+.plus-symbol, .divider-symbol /* The plus (+) or divider (/) symbols used to separate numbers or sections in the input fields. */ {
+    font-weight: bold;
+}
+
+.dice-separator /* The special character (like 'd' in '1d6') that separates the number of dice from the type of dice. */ {
+    font-weight: bold;
+    color: var(--label-color);
+}
+
+.read-only-bonus /* A display box showing a number that you cannot change, usually a calculated bonus. */ {
+    padding: 0.5rem;
+    border: 1px solid var(--input-border-color);
+    border-radius: 4px;
+    background-color: var(--stats-group-bg);
+    min-width: 40px;
+    text-align: center;
+}
+
+.checkbox-label /* The text label next to a checkbox. */ {
+    flex-basis: auto !important;
+    /* Override the fixed width for checkbox labels in a row */
+}
+
+.short-label /* A short text label for an input field. */ {
+    flex-basis: auto !important;
+    flex-shrink: 1;
+}
+
+.inline-checkbox-label /* A text label next to a checkbox that appears on the same line. */ {
+    flex-basis: auto !important;
+}
+
+button /* A general clickable button for actions. */ {
+    width: 100%;
+    padding: 0.75rem;
+    background-color: var(--button-bg);
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.small-btn /* A smaller clickable button, typically for less prominent actions. */ {
+    width: auto;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+    /* Prevent the button from shrinking */
+    margin: 0;
+}
+
+/* Style for section headlines within a stats-group */
+.section-headline,
+div[id^="unscaled-rows-container"]>label:first-child /* Styles for important titles within a group of statistics, and also for the first label in the 'unscaled-rows-container' section. */
+
+/* Maintain style for old headline */
+    {
+    display: block;
+    /* Make it a block element to take up its own line */
+    font-weight: bold;
+    color: var(--label-color);
+    margin-bottom: 0.6rem;
+    /* Add space below the headline */
+    padding-left: 2px;
+    /* Align it slightly with the labels below it */
+}
+
+button:hover /* Controls how any button looks ONLY when your mouse pointer is over it. */ {
+    background-color: var(--button-hover-bg);
+}
+
+.results h2 /* The main headings for the calculated results section. */ {
+    color: var(--header-color);
+}
+
+.results p /* Paragraph text within the results section. */ {
+    font-size: 1.1rem;
+    margin: 0.5rem 0;
+    /* Reduced bottom margin for tighter spacing */
+}
+
+.results span /* Highlighting specific numbers or text within the results section. */ {
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+.scaling-breakdown /* A section that explains how damage numbers are calculated or 'scaled'. */ {
+    margin-top: 1rem;
+    border-top: 2px solid var(--border-color);
+    padding-top: 0.75rem;
+}
+
+.total-damage-summary /* A summary box showing the overall damage number, made to stand out. */ {
+    margin-top: 1rem !important;
+    padding-top: 0.75rem;
+    border-top: 2px solid var(--border-color);
+    font-size: 1.2rem !important;
+}
+
+hr /* A horizontal line used to visually separate different sections of the page. */ {
+    border: none;
+    border-top: 2px solid var(--border-color);
+    margin: 1rem 0;
+}
+
+.main-grid /* The main layout area of the page, organizing content into columns. */ {
+    display: flex;
+    gap: 2rem;
+}
+
+.input-column /* A section of the main layout specifically for all the input fields. */ {
+    flex: 1;
+}
+
+.results-column /* A section of the main layout specifically for displaying the calculated results. */ {
+    flex: 1;
+    padding-left: 2rem;
+    border-left: 2px solid var(--border-color);
+}
+
+.summary-results /* The area that displays a quick summary of the calculation results. */ {
+    flex: 1;
+    /* Allows the summary to take up available space */
+}
+
+.roll-results table /* The table that shows the damage numbers for each possible dice roll. */ {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+}
+
+.roll-results th,
+.roll-results td /* The individual cells within the damage roll table (both headers and regular data). */ {
+    padding: 0.4rem;
+    border: 1px solid var(--border-color);
+}
+
+.roll-results th /* The header cells at the top of the damage roll table. */ {
+    background-color: var(--table-header-bg);
+    color: var(--table-header-text);
+}
+
+.remove-row-btn /* A button used to remove a specific row from a list or table. */ {
+    width: auto;
+    height: auto;
+    padding: 0.1rem 0.5rem;
+    font-size: 1.5rem;
+    font-weight: normal;
+    line-height: 1;
+    background-color: transparent;
+    color: var(--accent-color);
+    border: 1px solid transparent;
+    margin-left: auto;
+    /* Pushes the button to the far right */
+}
+
+.remove-row-btn:hover /* Controls how the row removal button looks ONLY when your mouse pointer is over it. */ {
+    background-color: var(--stats-group-bg);
+    border-color: var(--border-color);
+}
+
+/* --- Modal Styles --- */
+.modal-backdrop /* The darkened background that appears behind a pop-up window, making the pop-up stand out. */ {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-backdrop.hidden /* This completely hides the darkened background behind a pop-up window. */ {
+    display: none;
+}
+
+.modal /* The main pop-up window that appears on top of the page. */ {
+    background-color: var(--container-bg);
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.modal h2 /* The main heading or title inside the pop-up window. */ {
+    margin: 0;
+    color: var(--header-color);
+}
+
+.modal-format-toggle /* A group of buttons or options within the pop-up window that lets you switch between different data formats (like JSON or text). */ {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-format-toggle label /* The text label next to a format toggle option in the pop-up window. */ {
+    font-weight: bold;
+    color: var(--label-color);
+}
+
+.toggle-btn /* A button used to switch between two states, like enabling or disabling a setting. */ {
+    background-color: var(--stats-group-bg);
+    border: 1px solid var(--border-color);
+    padding: 0.25rem 0.75rem;
+    cursor: pointer;
+    color: var(--label-color);
+    border-radius: 4px;
+}
+
+.toggle-btn.active /* Changes how a toggle button looks ONLY when it is currently selected or active. */ {
+    background-color: var(--button-bg);
+    color: var(--button-text-color);
+    border-color: var(--button-bg);
+}
+
+.modal textarea /* A large text input box within the pop-up window, often used for displaying or entering multiple lines of text. */ {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+    background-color: var(--stats-group-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.5rem;
+    font-family: monospace;
+}
+
+.modal-actions /* A section within the pop-up window that contains buttons for actions like 'Save' or 'Cancel'. */ {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.modal-actions button /* Any button located within the action area of a pop-up window. */ {
+    width: auto;
+    padding: 0.5rem 1rem;
+}
+
+#modal-close-btn /* The unique button inside a pop-up window that closes it. */ {
+    background-color: var(--label-color);
+}
+
+#modal-close-btn:hover /* Controls how the close button in a pop-up window looks ONLY when your mouse pointer is over it. */ {
+    background-color: var(--text-color);
+}
+
+.hidden /* This makes any element it's applied to completely disappear from the page. */ {
+    display: none !important;
+}
+
+#modal-file-input /* The hidden input field that allows you to select a file from your computer. */ {
+    display: none;
+    /* Hide the default file input */
+}
+
+/* --- Modern Theme Toggle Styles --- */
+.theme-switch-wrapper /* A container that holds the switch for toggling between light and dark themes. */ {
+    display: flex;
+    align-items: center;
+}
+
+.theme-switch /* The actual toggle switch mechanism for changing themes. */ {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+    cursor: pointer;
+}
+
+.theme-switch input /* The hidden checkbox that powers the theme switch, controlled by clicking the visible switch. */ {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider /* The visual moving part of the theme toggle switch. */ {    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+}
+
+.slider:before /* The icon (sun or moon) that appears on the theme toggle switch. */ {
+    position: absolute;
+    content: "☀️";
+    /* Sun icon */
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.slider.round /* Makes the visual slider part of the theme switch appear rounded. */ {
+    border-radius: 34px;
+}
+
+.slider.round:before /* Makes the icon (sun or moon) on the theme switch appear rounded. */ {
+    border-radius: 50%;
+}
+
+input:checked+.slider /* Controls how the theme switch looks ONLY when the switch is in the 'checked' or 'on' position. */ {
+    background-color: var(--button-bg);
+}
+
+input:checked+.slider:before /* Changes the icon on the theme switch (e.g., from sun to moon) ONLY when the switch is in the 'checked' or 'on' position. */ {
+    transform: translateX(26px);
+    content: "🌙";
+}
+
+/* Moon icon */
+
+.best-damage-badge /* A special label that highlights the best damage result. */ {
+    font-weight: bold;
+    color: var(--button-bg);
+    background-color: var(--graze-row-bg);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+}
+
+.roll-results tbody tr:nth-child(odd) /* Alternates the background color of odd-numbered rows in the damage roll table for better readability. */ {
+    background-color: var(--table-row-odd-bg);
+}
+
+.roll-results .crit-row /* Highlights an entire row in the damage roll table ONLY when it represents a critical hit, making it stand out. */ {
+    background-color: var(--crit-row-bg) !important;
+    /* Light red for crits */
+    font-weight: bold;
+    color: var(--crit-row-text);
+}
+
+.roll-results .graze-row /* Highlights an entire row in the damage roll table ONLY when it represents a graze attack, making it stand out. */ {
+    background-color: var(--graze-row-bg) !important;
+    /* Light yellow for grazes */
+    color: var(--graze-row-text);
+}
+
+.comparison-container /* The box that holds the comparison table, allowing you to see different calculator setups side-by-side. */ {
+    background-color: var(--container-bg);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    padding: 2rem;
+    margin-top: 2rem;
+}
+
+.comparison-container h2 /* The main heading for the comparison table section. */ {
+    color: var(--header-color);
+    margin-top: 0;
+}
+
+#comparison-table /* The unique table that displays a side-by-side comparison of different calculator setups. */ {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+}
+
+#comparison-table th,
+#comparison-table td /* The individual cells within the comparison table (both headers and regular data). */ {
+    padding: 0.6rem;
+    border: 1px solid var(--border-color);
+}
+
+#comparison-table th /* The header cells at the top of the comparison table. */ {
+    background-color: var(--table-header-bg);
+    color: var(--table-header-text);
+}
+
+/* --- Responsive Design --- */
+@media (max-width: 1280px) /* These settings apply ONLY when the screen is smaller than 1280 pixels wide (e.g., on tablets or smaller laptops). */ {
+    .main-grid /* Changes the layout of the main content area ONLY when the screen is smaller than 1280 pixels wide, stacking items instead of placing them side-by-side. */ {
+        flex-direction: column;
+        gap: 1rem;
+        /* Reduce gap when stacked */
+    }
+
+    .results-column /* This controls how the results column appears ONLY when the screen is smaller (up to 1280 pixels wide). */ {
+        padding-left: 0;
+        border-left: none;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 2px solid var(--border-color);
+    }
+}
+
+@media (max-width: 768px) /* These settings apply ONLY when the screen is smaller than 768 pixels wide (e.g., on mobile phones). */ {
+    .page-wrapper /* Adjusts the spacing around the entire page content ONLY when the screen is smaller than 768 pixels wide. */ {
+        padding: 1rem;
+    }
+
+    .calculator-container,
+    .comparison-container /* Adjusts the spacing inside the calculator and comparison boxes ONLY when the screen is smaller than 768 pixels wide. */ {
+        padding: 1rem;
+    }
+}
+

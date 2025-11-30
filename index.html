@@ -1,659 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DDO Damage Calculator</title>
-    <style>
-        :root {
-            --bg-color: #f0f2f5;
-            --container-bg: #ffffff;
-            --text-color: #333;
-            --header-color: #1a237e;
-            --stats-group-bg: #f9f9f9;
-            --border-color: #e0e0e0;
-            --input-border-color: #ccc;
-            --label-color: #555;
-            --button-bg: #3949ab;
-            --button-hover-bg: #283593;
-            --button-text-color: white;
-            --accent-color: #c62828;
-            --table-header-bg: #e8eaf6;
-            --table-header-text: #3949ab;
-            --table-row-odd-bg: #f9f9f9;
-            --crit-row-bg: #ffebee;
-            --crit-row-text: #c62828;
-            --graze-row-bg: #fffde7;
-            --graze-row-text: #f57f17;
-        }
-
-        .dark-mode {
-            --bg-color: #121212;
-            --container-bg: #1e1e1e;
-            --text-color: #e0e0e0;
-            --header-color: #9fa8da;
-            --stats-group-bg: #2a2a2a;
-            --border-color: #424242;
-            --input-border-color: #555;
-            --label-color: #bbb;
-            --button-bg: #5c6bc0;
-            --button-hover-bg: #7986cb;
-            --accent-color: #ef9a9a;
-            --table-header-bg: #3949ab;
-            --table-header-text: #e8eaf6;
-            --table-row-odd-bg: #2c2c2c;
-            --crit-row-bg: #4a1f1f;
-            --crit-row-text: #ef9a9a;
-            --graze-row-bg: #4a442a;
-            --graze-row-text: #ffd54f;
-        }
-
-        body {
-            font-family: sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-        }
-
-        .page-wrapper {
-            width: 100%;
-            max-width: 1920px;
-            padding: 2rem;
-        }
-
-        .set-navigation {
-            display: flex;
-            margin-bottom: -1px; /* Overlap the container's border */
-            position: relative;
-            z-index: 1;
-        }
-
-        .nav-tab {
-            background-color: var(--stats-group-bg);
-            border: 1px solid var(--border-color);
-            border-bottom: none;
-            padding: 0.75rem 1.5rem;
-            padding-top: calc(0.75rem - 3px); /* Adjust for border */
-            cursor: pointer;
-            font-size: 1rem;
-            color: var(--label-color);
-            border-radius: 8px 8px 0 0;
-            margin-right: 0.5rem;
-            border-top: 3px solid transparent; /* Placeholder for active indicator */
-            transition: border-color 0.2s, color 0.2s, background-color 0.2s;
-            position: relative; /* Needed for absolute positioning of the close button */
-        }
-
-        .nav-tab:not(.active):hover {
-            background-color: var(--bg-color);
-            border-top-color: var(--border-color);
-            color: var(--text-color);
-        }
-
-        .nav-tab.active .tab-name {
-            color: var(--header-color);
-        }
-
-        #add-set-btn {
-            border: 1px dashed var(--border-color);
-            background-color: transparent;
-            color: var(--label-color);
-            font-size: 1.5rem;
-            font-weight: bold;
-            padding: 0.2rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: border-color 0.2s, color 0.2s;
-        }
-
-        #add-set-btn:hover {
-            border-color: var(--accent-color);
-        }
-
-        .nav-action-btn {
-            background-color: var(--stats-group-bg);
-            border: 1px solid var(--border-color);
-            padding: 0.75rem 1.5rem;
-            cursor: pointer;
-            font-size: 1rem;
-            color: var(--label-color);
-            border-radius: 8px;
-            margin-left: 0.5rem;
-        }
-
-        .tab-name {
-            display: inline-block;
-            padding: 0 0.5rem;
-            padding-left: 1.5rem; /* Make space for the close button */
-            min-width: 50px;
-            border-radius: 3px;
-        }
-
-        .tab-name:focus {
-            outline: 1px solid var(--accent-color);
-            background-color: var(--container-bg);
-        }
-
-        .close-tab-btn {
-            position: absolute;
-            top: 4px;
-            left: 4px;
-            color: var(--accent-color);
-            background: none;
-            border: none;
-            font-weight: bold;
-            border-radius: 50%;
-            cursor: pointer;
-            padding: 0;
-            font-size: 1.2rem;
-            width: 22px;
-            height: 22px;
-            line-height: 22px;
-            text-align: center;
-            transition: background-color 0.2s;
-        }
-
-        .close-tab-btn:hover {
-            background-color: var(--border-color);
-        }
-
-        .nav-tab.active {
-            background-color: var(--container-bg);
-            color: var(--header-color);
-            border-bottom: 1px solid var(--container-bg); /* Make it look connected */
-            border-top-color: var(--accent-color); /* Highlight for active tab */
-            font-weight: bold;
-        }
-
-        /* --- Drag and Drop Styles --- */
-        .nav-tab.dragging {
-            opacity: 0.5;
-        }
-
-        .nav-tab.drag-over-indicator {
-            /* Add a line to the left of the tab to show where the dragged tab will be dropped */
-            border-left: 3px solid var(--accent-color);
-        }
-
-        #add-set-btn.drag-over-end-indicator {
-            border: 1px dashed var(--accent-color); /* Highlight the add button */
-            background-color: rgba(var(--accent-color-rgb), 0.1); /* Subtle background */
-        }
-
-        .nav-tab-placeholder {
-            background-color: transparent;
-            border: 2px dashed var(--accent-color);
-            border-radius: 8px 8px 0 0;
-            margin-right: 0.5rem;
-            box-sizing: border-box; /* Ensure border is included in width/height */
-        }
-
-        .calculator-container {
-            background-color: var(--container-bg);
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            border: 1px solid var(--border-color);
-            padding: 2rem;
-        }
-
-        .title-wrapper {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        h1 {
-            color: var(--header-color);    
-            margin: 0; /* Reset margin for h1 */
-        }
-
-        .subtitle {
-            margin-bottom: 1.5rem;
-        }
-
-        .calculator-set {
-            display: none;
-        }
-
-        .calculator-set.active {
-            display: block;
-        }
-
-        #calculate-btn {
-            margin-top: 0.5rem;
-        }
-
-        .stats-group {
-            background-color: var(--stats-group-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 0.6rem 0.75rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .input-group-row {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            flex-wrap: wrap; /* Allow items to wrap onto new lines */
-        }
-
-        .input-group-row:not(:last-child) {
-            margin-bottom: 0.6rem;
-        }
-
-        .input-group-row label {
-            flex-basis: 100px; /* Give labels a fixed width */
-            flex-shrink: 0;
-        }
-
-        .example-text {
-            font-size: 0.8rem;
-            color: var(--label-color);
-            opacity: 0.8;
-            text-align: center;
-            margin-bottom: 0.2rem;
-        }
-
-        .input-group {
-            margin-bottom: 0.75rem;
-        }
-
-        .input-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: bold;
-            color: var(--label-color);
-        }
-
-        .input-group input {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid var(--input-border-color);
-            border-radius: 4px;
-            box-sizing: border-box; /* Important for padding and width */
-            background-color: var(--container-bg);
-            color: var(--text-color);
-        }
-
-        .input-group-row input {
-            padding: 0.5rem;
-            border: 1px solid var(--input-border-color);
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-
-        .small-input {
-            width: 80px;
-        }
-
-        .plus-symbol, .divider-symbol {
-            font-weight: bold;
-        }
-        .dice-separator {
-            font-weight: bold;
-            color: var(--label-color);
-        }
-
-        .checkbox-label {
-            flex-basis: auto !important; /* Override the fixed width for checkbox labels in a row */
-        }
-
-        .short-label {
-            flex-basis: auto !important;
-            flex-shrink: 1;
-        }
-
-        .inline-checkbox-label {
-            flex-basis: auto !important;
-        }
-
-        button {
-            width: 100%;
-            padding: 0.75rem;
-            background-color: var(--button-bg);
-            color: var(--button-text-color);
-            border: none;
-            border-radius: 4px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .small-btn {
-            width: auto;
-            padding: 0.4rem 0.6rem;
-            font-size: 0.8rem;
-            flex-shrink: 0; /* Prevent the button from shrinking */
-            margin: 0;
-        }
-
-        /* Style for section headlines within a stats-group */
-        .section-headline,
-        div[id^="unscaled-rows-container"] > label:first-child /* Maintain style for old headline */ {
-            display: block; /* Make it a block element to take up its own line */
-            font-weight: bold;
-            color: var(--label-color);
-            margin-bottom: 0.6rem; /* Add space below the headline */
-            padding-left: 2px; /* Align it slightly with the labels below it */
-        }
-
-        button:hover {
-            background-color: var(--button-hover-bg);
-        }
-
-        .results h2 {
-            color: var(--header-color);
-        }
-
-        .results p {
-            font-size: 1.1rem;
-            margin: 0.5rem 0; /* Reduced bottom margin for tighter spacing */
-        }
-
-        .results span {
-            font-weight: bold;
-            color: var(--accent-color);
-        }
-
-        .scaling-breakdown {
-            margin-top: 1rem;
-            border-top: 2px solid var(--border-color);
-            padding-top: 0.75rem;
-        }
-        .total-damage-summary {
-            margin-top: 1rem !important;
-            padding-top: 0.75rem;
-            border-top: 2px solid var(--border-color);
-            font-size: 1.2rem !important;
-        }
-
-        .main-grid {
-            display: flex;
-            gap: 2rem;
-        }
-
-        .input-column {
-            flex: 1;
-        }
-
-        .results-column {
-            flex: 1;
-            padding-left: 2rem;
-            border-left: 2px solid var(--border-color);
-        }
-
-        .summary-results {
-            flex: 1; /* Allows the summary to take up available space */
-        }
-
-        .roll-results table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: center;
-        }
-
-        .roll-results th, .roll-results td {
-            padding: 0.4rem;
-            border: 1px solid var(--border-color);
-        }
-
-        .roll-results th {
-            background-color: var(--table-header-bg);
-            color: var(--table-header-text);
-        }
-
-        .remove-row-btn {
-            width: auto;
-            height: auto;
-            padding: 0.1rem 0.5rem;
-            font-size: 1.5rem;
-            font-weight: normal;
-            line-height: 1;
-            background-color: transparent;
-            color: var(--accent-color);
-            border: 1px solid transparent;
-            margin-left: auto; /* Pushes the button to the far right */
-        }
-        .remove-row-btn:hover {
-            background-color: var(--stats-group-bg);
-            border-color: var(--border-color);
-        }
-        /* --- Modal Styles --- */
-        .modal-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.6);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .modal-backdrop.hidden {
-            display: none;
-        }
-
-        .modal {
-            background-color: var(--container-bg);
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            width: 90%;
-            max-width: 600px;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .modal h2 {
-            margin: 0;
-            color: var(--header-color);
-        }
-
-        .modal-format-toggle {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .modal-format-toggle label {
-            font-weight: bold;
-            color: var(--label-color);
-        }
-
-        .toggle-btn {
-            background-color: var(--stats-group-bg);
-            border: 1px solid var(--border-color);
-            padding: 0.25rem 0.75rem;
-            cursor: pointer;
-            color: var(--label-color);
-            border-radius: 4px;
-        }
-
-        .toggle-btn.active {
-            background-color: var(--button-bg);
-            color: var(--button-text-color);
-            border-color: var(--button-bg);
-        }
-
-        .modal textarea {
-            width: 100%;
-            box-sizing: border-box;
-            resize: vertical;
-            background-color: var(--stats-group-bg);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 0.5rem;
-            font-family: monospace;
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 1rem;
-            justify-content: flex-end;
-        }
-
-        .modal-actions button {
-            width: auto;
-            padding: 0.5rem 1rem;
-        }
-
-        #modal-close-btn {
-            background-color: var(--label-color);
-        }
-
-        #modal-close-btn:hover {
-            background-color: var(--text-color);
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        #modal-file-input {
-            display: none; /* Hide the default file input */
-        }
-
-        /* --- Modern Theme Toggle Styles --- */
-        .theme-switch-wrapper {
-            display: flex;
-            align-items: center;
-        }
-
-        .theme-switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 34px;
-            cursor: pointer;
-        }
-
-        .theme-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "☀️"; /* Sun icon */
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .slider.round { border-radius: 34px; }
-        .slider.round:before { border-radius: 50%; }
-
-        input:checked + .slider { background-color: var(--button-bg); }
-        input:checked + .slider:before { transform: translateX(26px); content: "🌙"; } /* Moon icon */
-
-        .best-damage-badge {
-            font-weight: bold;
-            color: var(--button-bg);
-            background-color: var(--graze-row-bg);
-            padding: 0.2rem 0.4rem;
-            border-radius: 4px;
-        }
-
-        .roll-results tbody tr:nth-child(odd) {
-            background-color: var(--table-row-odd-bg);
-        }
-
-        .roll-results .crit-row {
-            background-color: var(--crit-row-bg) !important; /* Light red for crits */
-            font-weight: bold;
-            color: var(--crit-row-text);
-        }
-
-        .roll-results .graze-row {
-            background-color: var(--graze-row-bg) !important; /* Light yellow for grazes */
-            color: var(--graze-row-text);
-        }
-
-        .comparison-container {
-            background-color: var(--container-bg);
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            border: 1px solid var(--border-color);
-            padding: 2rem;
-            margin-top: 2rem;
-        }
-
-        .comparison-container h2 {
-            color: var(--header-color);
-            margin-top: 0;
-        }
-
-        #comparison-table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: center;
-        }
-
-        #comparison-table th, #comparison-table td {
-            padding: 0.6rem;
-            border: 1px solid var(--border-color);
-        }
-
-        #comparison-table th {
-            background-color: var(--table-header-bg);
-            color: var(--table-header-text);
-        }
-
-        /* --- Responsive Design --- */
-        @media (max-width: 1280px) {
-            .main-grid {
-                flex-direction: column;
-                gap: 1rem; /* Reduce gap when stacked */
-            }
-
-            .results-column {
-                padding-left: 0;
-                border-left: none;
-                margin-top: 2rem;
-                padding-top: 2rem;
-                border-top: 2px solid var(--border-color);
-            }
-        }
-
-        @media (max-width: 768px) {
-            .page-wrapper {
-                padding: 1rem;
-            }
-            .calculator-container, .comparison-container {
-                padding: 1rem;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
     <div class="page-wrapper">
@@ -670,7 +24,8 @@
         <p class="subtitle">Enter your combat stats to calculate and compare average damage per hit.</p>
 
         <nav class="set-navigation">
-            <button id="add-set-btn" title="Add a new weapon set for comparison">+</button>
+            <button id="add-weapon-set-btn" class="nav-action-btn" title="Add a new weapon set for comparison">⚔️</button>
+            <button id="add-spell-set-btn" class="nav-action-btn" title="Add a new spell set for comparison">🔮</button>
             <button id="import-btn" class="nav-action-btn" title="Import sets from text or file">Import</button>
             <button id="export-btn" class="nav-action-btn" title="Export sets to text or file">Export</button>
         </nav>
@@ -692,6 +47,7 @@
                         <th>Avg Sneak</th>
                         <th>Avg Imbue</th>
                         <th>Avg Unscaled</th>
+                        <th>Avg Scaled</th>
                     </tr>
                 </thead>
                 <tbody id="comparison-tbody"></tbody>
@@ -706,8 +62,10 @@
             <p id="modal-description">Copy the text below or save it to a file.</p>
             <div class="modal-format-toggle">
                 <label>Format:</label>
-                <button id="format-json-btn" class="toggle-btn active" title="Machine-readable format for re-importing">JSON</button>
-                <button id="format-summary-btn" class="toggle-btn" title="Human-readable summary for sharing">Summary</button>
+                <button id="format-json-btn" class="toggle-btn active"
+                    title="Machine-readable format for re-importing">JSON</button>
+                <button id="format-summary-btn" class="toggle-btn"
+                    title="Human-readable summary for sharing">Summary</button>
             </div>
             <textarea id="modal-textarea" rows="10"></textarea>
             <div class="modal-actions">
@@ -721,7 +79,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Template for a single calculator set -->
     <template id="calculator-set-template">
         <div class="main-grid">
@@ -734,78 +92,124 @@
                     <div class="example-text">e.g., 1d6+3</div>
                     <div class="input-group-row">
                         <label for="weapon-damage">Damage</label>
-                        <input type="text" id="weapon-damage" value="1d10+3" title="Weapon's base damage dice + enhancement bonus">
+                        <input type="text" id="weapon-damage" value="1d10+3"
+                            title="Weapon's base damage dice + enhancement bonus" class="adaptive-text-input">
                         <span class="plus-symbol">+</span>
-                        <input type="number" id="bonus-base-damage" value="125" class="small-input" title="Bonus damage that IS multiplied on a critical hit">
+                        <input type="number" id="bonus-base-damage" value="125" class="small-input"
+                            title="Bonus damage that IS multiplied on a critical hit">
                     </div>
                 </div>
                 <div class="stats-group">
                     <div class="input-group-row">
                         <label for="crit-threat">Critical</label>
-                        <input type="text" id="crit-threat" value="15-20" class="small-input" title="Enter threat range size (e.g., 6) or the roll numbers (e.g., 15-20)">
+                        <input type="text" id="crit-threat" value="15-20" class="small-input"
+                            title="Enter threat range size (e.g., 6) or the roll numbers (e.g., 15-20)">
                         <span class="divider-symbol">/</span>
-                        <input type="number" id="crit-multiplier" value="4" step="0.5" class="small-input" title="Critical Multiplier (e.g., x4)">
+                        <input type="number" id="crit-multiplier" value="4" step="0.5" class="small-input"
+                            title="Critical Multiplier (e.g., x4)">
                     </div>
                     <div class="input-group-row">
                         <label for="seeker-damage">Seeker</label>
-                        <input type="number" id="seeker-damage" value="0" class="small-input" title="Bonus damage on critical hits that gets multiplied (e.g., from Seeker items)">
+                        <input type="number" id="seeker-damage" value="0" class="small-input"
+                            title="Bonus damage on critical hits that gets multiplied (e.g., from Seeker items)">
                     </div>
                     <div class="input-group-row">
                         <label for="crit-multiplier-19-20">19-20 Multiplier</label>
-                        <input type="number" id="crit-multiplier-19-20" value="2" step="0.5" class="small-input" title="Additional critical multiplier on a roll of 19 or 20 (e.g., a value of 1 here with a base x4 multiplier results in a x5 on a 19-20).">
+                        <input type="number" id="crit-multiplier-19-20" value="2" step="0.5" class="small-input"
+                            title="Additional critical multiplier on a roll of 19 or 20 (e.g., a value of 1 here with a base x4 multiplier results in a x5 on a 19-20).">
                     </div>
                 </div>
                 <div class="stats-group">
                     <div class="input-group-row">
                         <label for="miss-threshold">Miss on Roll ≤</label>
-                        <input type="number" id="miss-threshold" value="1" min="1" max="20" class="small-input" title="Rolls at or below this value are a miss. (1 is always a miss).">
-                        <label for="graze-threshold" title="Rolls at or below this value (but above miss) are a graze.">Graze on Roll ≤</label>
+                        <input type="number" id="miss-threshold" value="1" min="1" max="20" class="small-input"
+                            title="Rolls at or below this value are a miss. (1 is always a miss).">
+                        <label for="graze-threshold"
+                            title="Rolls at or below this value (but above miss) are a graze.">Graze on Roll ≤</label>
                         <input type="number" id="graze-threshold" value="5" min="1" max="20" class="small-input">
                     </div>
-                    <label for="graze-percent">Graze Damage %</label>
-                    <input type="number" id="graze-percent" value="20" min="0" max="100" class="small-input">
+                    <div class="input-group-row">
+                        <label for="graze-percent">Graze Damage %</label>
+                        <input type="number" id="graze-percent" value="20" min="0" max="100" class="small-input">
+                    </div>
                 </div>
                 <div class="stats-group">
                     <div id="unscaled-rows-container">
-                            <label>Unscaled Damage Sources (e.g., 16d6 acid)</label>
+                        <label>Unscaled Damage Sources (e.g., 16d6 acid)</label>
                         <!-- Default unscaled rows -->
                         <div class="input-group-row">
                             <label for="unscaled-damage-1">Unscaled Damage 1</label>
-                            <input type="text" id="unscaled-damage-1" value="0" title="Additional source of unscaled damage">
+                            <input type="text" id="unscaled-damage-1" value="0"
+                                title="Additional source of unscaled damage" class="adaptive-text-input">
                             <label for="unscaled-proc-chance-1" class="short-label">Proc %</label>
-                            <input type="number" id="unscaled-proc-chance-1" value="100" min="0" max="100" class="small-input" title="Chance for this damage to occur on a hit">
-                            <input type="checkbox" id="unscaled-doublestrike-1" checked><label for="unscaled-doublestrike-1" class="inline-checkbox-label" title="Should this damage scale with Doublestrike/Doubleshot?">Multi-Strike</label>
-                            <input type="checkbox" id="unscaled-on-crit-1"><label for="unscaled-on-crit-1" class="inline-checkbox-label" title="Should this damage only apply on a critical hit?">On Crit</label>
+                            <input type="number" id="unscaled-proc-chance-1" value="100" min="0" max="100"
+                                class="small-input adaptive-text-input" title="Chance for this damage to occur on a hit">
+                            <input type="checkbox" id="unscaled-doublestrike-1" checked><label
+                                for="unscaled-doublestrike-1" class="inline-checkbox-label"
+                                title="Should this damage scale with Doublestrike/Doubleshot?">Multi-Strike</label>
+                            <input type="checkbox" id="unscaled-on-crit-1"><label for="unscaled-on-crit-1"
+                                class="inline-checkbox-label"
+                                title="Should this damage only apply on a critical hit?">On Crit</label>
                             <button class="remove-row-btn" title="Remove this damage source">&times;</button>
                         </div>
                         <div class="input-group-row">
                             <label for="unscaled-damage-2">Unscaled Damage 2</label>
-                            <input type="text" id="unscaled-damage-2" value="0" title="Additional source of unscaled damage">
+                            <input type="text" id="unscaled-damage-2" value="0"
+                                title="Additional source of unscaled damage" class="adaptive-text-input">
                             <label for="unscaled-proc-chance-2" class="short-label">Proc %</label>
-                            <input type="number" id="unscaled-proc-chance-2" value="100" min="0" max="100" class="small-input" title="Chance for this damage to occur on a hit">
-                            <input type="checkbox" id="unscaled-doublestrike-2" checked><label for="unscaled-doublestrike-2" class="inline-checkbox-label" title="Should this damage scale with Doublestrike/Doubleshot?">Multi-Strike</label>
-                            <input type="checkbox" id="unscaled-on-crit-2"><label for="unscaled-on-crit-2" class="inline-checkbox-label" title="Should this damage only apply on a critical hit?">On Crit</label>
+                            <input type="number" id="unscaled-proc-chance-2" value="100" min="0" max="100"
+                                class="small-input adaptive-text-input" title="Chance for this damage to occur on a hit">
+                            <input type="checkbox" id="unscaled-doublestrike-2" checked><label
+                                for="unscaled-doublestrike-2" class="inline-checkbox-label"
+                                title="Should this damage scale with Doublestrike/Doubleshot?">Multi-Strike</label>
+                            <input type="checkbox" id="unscaled-on-crit-2"><label for="unscaled-on-crit-2"
+                                class="inline-checkbox-label"
+                                title="Should this damage only apply on a critical hit?">On Crit</label>
                             <button class="remove-row-btn" title="Remove this damage source">&times;</button>
                         </div>
                         <div class="input-group-row">
                             <label for="unscaled-damage-3">Unscaled Damage 3</label>
-                            <input type="text" id="unscaled-damage-3" value="0" title="Additional source of unscaled damage">
+                            <input type="text" id="unscaled-damage-3" value="0"
+                                title="Additional source of unscaled damage" class="adaptive-text-input">
                             <label for="unscaled-proc-chance-3" class="short-label">Proc %</label>
-                            <input type="number" id="unscaled-proc-chance-3" value="100" min="0" max="100" class="small-input" title="Chance for this damage to occur on a hit">
-                            <input type="checkbox" id="unscaled-doublestrike-3" checked><label for="unscaled-doublestrike-3" class="inline-checkbox-label" title="Should this damage scale with Doublestrike/Doubleshot?">Multi-Strike</label>
-                            <input type="checkbox" id="unscaled-on-crit-3"><label for="unscaled-on-crit-3" class="inline-checkbox-label" title="Should this damage only apply on a critical hit?">On Crit</label>
+                            <input type="number" id="unscaled-proc-chance-3" value="100" min="0" max="100"
+                                class="small-input adaptive-text-input" title="Chance for this damage to occur on a hit">
+                            <input type="checkbox" id="unscaled-doublestrike-3" checked><label
+                                for="unscaled-doublestrike-3" class="inline-checkbox-label"
+                                title="Should this damage scale with Doublestrike/Doubleshot?">Multi-Strike</label>
+                            <input type="checkbox" id="unscaled-on-crit-3"><label for="unscaled-on-crit-3"
+                                class="inline-checkbox-label"
+                                title="Should this damage only apply on a critical hit?">On Crit</label>
                             <button class="remove-row-btn" title="Remove this damage source">&times;</button>
                         </div>
                     </div>
-                    <button id="add-unscaled-row-btn" class="small-btn" style="width: auto; margin-top: 0.5rem;">Add Unscaled Damage</button>
+                    <button id="add-unscaled-row-btn" class="small-btn" style="width: auto; margin-top: 0.5rem;">Add
+                        Unscaled Damage</button>
                 </div>
                 <div class="stats-group">
-                    <div class="input-group-row"><label for="doublestrike">Multi-Strike (%)</label><input type="number" id="doublestrike" value="0" min="0" class="small-input"><input type="checkbox" id="is-doubleshot"><label for="is-doubleshot" class="checkbox-label">Is Doubleshot</label></div>
-                    <div class="input-group-row"><label for="melee-power">Melee/Ranged Power</label><input type="number" id="melee-power" value="0" min="0" class="small-input"></div>
-                    <div class="input-group-row"><label for="spell-power">Spell Power</label><input type="number" id="spell-power" value="0" min="0" class="small-input"></div>
+                    <div id="scaled-dice-rows-container">
+                        <label>Scaled Dice Damage (e.g., base 7d77, +1 die per 7 imbue bonus)</label>
+                        <div class="input-group-row read-only-display">
+                            <label style="white-space: nowrap;">Dice Added from Imbue:</label>
+                            <span id="scaled-dice-added-input-display">0</span>
+                        </div>
+                        <!-- Scaled dice rows will be dynamically added here -->
+                    </div>
+                    <button id="add-scaled-dice-row-btn" class="small-btn" style="width: auto; margin-top: 0.5rem;">Add Scaled Dice</button>
+                </div>
+                <div class="stats-group">
+                    <div class="input-group-row"><label for="doublestrike">Multi-Strike (%)</label><input type="number"
+                            id="doublestrike" value="0" min="0" class="small-input"><input type="checkbox"
+                            id="is-doubleshot"><label for="is-doubleshot" class="checkbox-label">Is Doubleshot</label>
+                    </div>
+                    <div class="input-group-row"><label for="melee-power">Melee/Ranged Power</label><input type="number"
+                            id="melee-power" value="0" min="0" class="small-input"></div>
+                    <div class="input-group-row"><label for="spell-power">Spell Power</label><input type="number"
+                            id="spell-power" value="0" min="0" class="small-input"></div>
                     <div class="input-group-row">
                         <label for="reaper-skulls">Reaper Skulls</label>
-                        <select id="reaper-skulls" class="small-input" title="Number of Reaper skulls for difficulty scaling.">
+                        <select id="reaper-skulls" class="small-input"
+                            title="Number of Reaper skulls for difficulty scaling.">
                             <option value="0">None</option>
                             <option value="1">1</option>
                             <option value="2">2</option>
@@ -824,25 +228,33 @@
                     <label class="section-headline">Sneak Attack & Deception</label>
                     <div class="input-group-row">
                         <label for="sneak-attack-dice">Sneak Attack</label>
-                        <input type="number" id="sneak-attack-dice" value="0" class="small-input" title="Number of Sneak Attack d6 dice">
+                        <input type="number" id="sneak-attack-dice" value="0" class="small-input"
+                            title="Number of Sneak Attack d6 dice">
                         <span class="dice-separator">d6</span><span class="plus-symbol">+</span>
-                        <input type="number" id="sneak-bonus" value="0" class="small-input" title="Flat bonus to Sneak Attack damage">
+                        <input type="number" id="sneak-bonus" value="0" class="small-input"
+                            title="Flat bonus to Sneak Attack damage">
                     </div>
                 </div>
                 <div class="stats-group">
                     <div class="input-group-row">
                         <label for="imbue-dice-count">Imbue Dice</label>
-                        <input type="number" id="imbue-dice-count" value="0" class="small-input" title="Number of imbue dice">
+                        <input type="number" id="imbue-dice-count" value="0" class="small-input"
+                            title="Number of imbue dice">
                         <span class="dice-separator">d</span>
-                        <input type="number" id="imbue-die-type" value="6" class="small-input" title="Type of imbue dice (e.g., 6 for d6, 8 for d8)">
+                        <input type="number" id="imbue-die-type" value="6" class="small-input"
+                            title="Type of imbue dice (e.g., 6 for d6, 8 for d8)">
                     </div>
                     <div class="input-group-row">
                         <label for="imbue-scaling">Scaling %</label>
-                        <input type="number" id="imbue-scaling" value="100" class="small-input" title="Percentage of Melee/Spell Power to apply to imbue damage">
-                        <input type="checkbox" id="imbue-uses-spellpower"><label for="imbue-uses-spellpower" class="checkbox-label">Use Spell Power</label>
+                        <input type="number" id="imbue-scaling" value="100" class="small-input"
+                            title="Percentage of Melee/Spell Power to apply to imbue damage">
+                        <input type="checkbox" id="imbue-uses-spellpower"><label for="imbue-uses-spellpower"
+                            class="checkbox-label">Use Spell Power</label>
                     </div>
                     <div class="input-group-row">
-                        <label for="imbue-crits" class="checkbox-label" title="If checked, the base imbue damage is applied an additional time on a critical hit (e.g., Monk finishers).">Imbue crits for extra damage</label>
+                        <label for="imbue-crits" class="checkbox-label"
+                            title="If checked, the base imbue damage is applied an additional time on a critical hit (e.g., Monk finishers).">Imbue
+                            crits for extra damage</label>
                         <input type="checkbox" id="imbue-crits">
                     </div>
                     <div class="input-group-row">
@@ -862,13 +274,16 @@
                         <p><strong>Total Avg Sneak Attack:</strong> <span id="avg-sneak-damage">0</span></p>
                         <p><strong>Total Avg Imbue:</strong> <span id="avg-imbue-damage">0</span></p>
                         <p><strong>Total Avg Unscaled:</strong> <span id="avg-unscaled-damage">0</span></p>
-                        <p class="total-damage-summary"><strong>Total Average Damage:</strong> <span id="total-avg-damage">0</span></p>
+                        <p><strong>Total Avg Scaled Dice:</strong> <span id="avg-scaled-dice-damage">0</span></p>
+                        <p class="total-damage-summary"><strong>Total Average Damage:</strong> <span
+                                id="total-avg-damage">0</span></p>
                     </div>
                     <div class="scaling-breakdown">
                         <h2>Scaling Breakdown</h2>
                         <p><strong>Weapon Scaling:</strong> <span id="weapon-scaling">0</span></p>
                         <p><strong>Sneak Scaling:</strong> <span id="sneak-scaling">0</span></p>
                         <p><strong>Imbue Scaling:</strong> <span id="imbue-scaling-breakdown">0</span></p>
+                        <p><strong>Scaled Dice Scaling:</strong> <span id="scaled-dice-scaling-breakdown">0</span></p>
                         <p><strong>Imbue Power:</strong> <span id="imbue-power-source">0</span></p>
                         <p><strong>Reaper Penalty:</strong> <span id="reaper-penalty">0.0%</span></p>
 
@@ -883,1537 +298,132 @@
                                     <th>Sneak</th>
                                     <th>Imbue</th>
                                     <th>Unscaled</th>
+                                    <th>Scaled Dice</th>
                                     <th>Sum</th>
                                     <th>Outcome</th>
                                 </tr>
-                            </thead><tbody id="roll-damage-tbody"></tbody></table>
+                            </thead>
+                            <tbody id="roll-damage-tbody"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
     </template>
 
+    <!-- Template for a single spell calculator set -->
+    <template id="spell-calculator-template">
+        <div class="main-grid">
+            <div class="input-column">
+                <div class="stats-group" id="spell-crafter-group">
+                    <label class="section-headline">Spell Crafter</label>
+                    <div id="spell-damage-rows-container">
+                        <!-- Default spell damage row -->
+                        <div class="input-group-row">
+                            <input type="text" id="spell-name-1" value="Spell 1" title="Name of the spell component"
+                                placeholder="Spell Name" class="adaptive-text-input">
+                            <label for="spell-damage-1">Base Damage</label>
+                            <input type="text" id="spell-damage-1" value="10d6"
+                                title="The spell's base damage (e.g., 10d6+50)" class="adaptive-text-input">
+                            <span class="plus-symbol">+</span>
+                            <label for="spell-cl-scaling-1" class="short-label">per CL</label>
+                            <input type="text" id="spell-cl-scaling-1" value="1d6" class="small-input adaptive-text-input"
+                                title="Bonus damage dice per caster level (e.g., 1d6 per CL)">
+                            <label for="caster-level-1" class="short-label">CL</label>
+                            <input type="number" id="caster-level-1" value="20" class="small-input"
+                                title="Caster Level for this damage component">
+                            <button class="add-scaling-input-btn small-btn" title="Add additional scaling input">+</button>
+                            <button class="remove-scaling-input-btn small-btn hidden" title="Remove last additional scaling input">-</button>
+                            <button class="remove-row-btn" title="Remove this damage source">&times;</button>
+                        </div>
+                    </div>
+
+                    <button id="add-spell-damage-row-btn" class="small-btn" style="width: auto; margin-top: 0.5rem;">Add
+                        Spell Damage Source</button>
+                </div>
+                <div class="stats-group">
+                    <label class="section-headline">Spell Power & Criticals</label>
+                    <div class="input-group-row">
+                        <label for="spell-power">Spell Power</label>
+                        <input type="number" id="spell-power" value="500" class="small-input"
+                            title="Your spell power for the spell's damage type.">
+                        <span class="plus-symbol">+</span>
+                        <span id="metamagic-spell-power-bonus" class="read-only-bonus">0</span>
+                    </div>
+                    <div class="input-group-row">
+                        <label for="spell-crit-chance">Crit Chance %</label>
+                        <input type="number" id="spell-crit-chance" value="20" class="small-input"
+                            title="Your chance to critically hit with the spell.">
+                    </div>
+                    <div class="input-group-row">
+                        <label for="spell-crit-damage">Crit Damage %</label>
+                        <input type="number" id="spell-crit-damage" value="100" class="small-input"
+                            title="Your additional spell critical damage (e.g., 100 for a total of x3 multiplier).">
+                    </div>
+                </div>
+                <div class="stats-group">
+                    <label class="section-headline">Target Defenses</label>
+
+                </div>
+                <div class="stats-group">
+                    <label class="section-headline">Metamagic</label>
+                    <div class="input-group-row">
+                        <input type="checkbox" id="metamagic-empower"><label for="metamagic-empower"
+                            class="checkbox-label">Empower</label>
+                        <input type="checkbox" id="metamagic-maximize"><label for="metamagic-maximize"
+                            class="checkbox-label">Maximize</label>
+                        <input type="checkbox" id="metamagic-intensify"><label for="metamagic-intensify"
+                            class="checkbox-label">Intensify</label>
+                    </div>
+                </div>
+                <button id="calculate-spell-btn">Calculate Spell Damage</button>
+            </div>
+            <div class="results-column">
+                <div id="spell-results-container" class="results">
+                    <div class="summary-results">
+                        <h2 id="spell-summary-header">Spell Damage Summary</h2>
+                        <p><strong>Average Base Hit:</strong> <span id="avg-spell-damage">0</span></p>
+                        <p><strong>Average Critical Hit:</strong> <span id="avg-spell-crit-damage">0</span></p>
+                        <p class="total-damage-summary"><strong>Total Average Damage:</strong> <span
+                                                        id="total-avg-spell-damage">0</span></p>                        <hr>
+                        <div id="individual-spell-damage-summary">
+                            <h3>Individual Spell Damage</h3>
+                            <!-- Individual spell damages will be inserted here -->
+                        </div>
+                        <hr>
+
+                        <p class="total-damage-summary"><strong>Final Average Damage:</strong> <span
+                                id="final-spell-damage">0</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Template for a single unscaled damage row -->
+    <template id="unscaled-row-template">
+        <div class="input-group-row">
+            <label for="unscaled-damage-X">Unscaled Damage X</label>
+            <input type="text" id="unscaled-damage-X" value="0" title="Additional source of unscaled damage"
+                class="adaptive-text-input">
+            <label for="unscaled-proc-chance-X" class="short-label">Proc %</label>
+            <input type="number" id="unscaled-proc-chance-X" value="100" min="0" max="100"
+                class="small-input adaptive-text-input" title="Chance for this damage to occur on a hit">
+            <input type="checkbox" id="unscaled-doublestrike-X" checked><label for="unscaled-doublestrike-X"
+                class="inline-checkbox-label" title="Should this damage scale with Doublestrike/Doubleshot?">Multi-Strike</label>
+            <input type="checkbox" id="unscaled-on-crit-X"><label for="unscaled-on-crit-X" class="inline-checkbox-label"
+                title="Should this damage only apply on a critical hit?">On Crit</label>
+            <button class="remove-row-btn" title="Remove this damage source">&times;</button>
+        </div>
+    </template>
+
+
     <!-- Link to the JavaScript file at the end of the body -->
-    <script>
-        // Wait for the entire page to load before running the script
-        document.addEventListener('DOMContentLoaded', () => {
-
-        let nextSetId = 1;
-
-        class Calculator {
-            constructor(setId, manager, name) { // Add 'name' to the constructor
-                this.setId = setId;
-                // Properties to store calculation results for the comparison table
-                this.totalAverageDamage = 0;
-                this.totalAvgBaseHitDmg = 0;
-                this.totalAvgSneakDmg = 0;
-                this.totalAvgUnscaledDmg = 0; // New property for unscaled damage
-                this.totalAvgImbueDmg = 0; // This will hold the sum of all unscaled sources
-
-                this.idSuffix = `-set${setId}`;
-                this.getElements();
-                this.manager = manager;
-                this.addEventListeners();
-                // Dynamically count the number of unscaled rows present in the template/DOM.
-                this.unscaledRowCount = this.unscaledRowsContainer.querySelectorAll('.input-group-row').length;
-                
-                this.recalculateHandler = this.handleInputChange.bind(this);
-                // We will call the initial calculation from the manager
-            }
-
-
-            getElements() {
-                const get = (baseId) => document.getElementById(baseId + this.idSuffix);
-
-                this.weaponDiceInput = get('weapon-dice'); // For setId=1, suffix is '', gets 'weapon-dice'. For setId=2, suffix is '-set2', gets 'weapon-dice-set2'.
-                this.weaponDamageInput = get('weapon-damage');
-                this.bonusBaseDamageInput = get('bonus-base-damage');
-                this.meleePowerInput = get('melee-power');
-                this.spellPowerInput = get('spell-power');
-                this.critThreatInput = get('crit-threat');
-                this.critMultiplierInput = get('crit-multiplier');
-                this.seekerDamageInput = get('seeker-damage');
-                this.critMultiplier1920Input = get('crit-multiplier-19-20');
-                this.sneakAttackDiceInput = get('sneak-attack-dice');
-                this.sneakBonusInput = get('sneak-bonus');
-                this.doublestrikeInput = get('doublestrike');
-                this.isDoubleshotCheckbox = get('is-doubleshot');
-                this.missThresholdInput = get('miss-threshold');
-                this.grazeThresholdInput = get('graze-threshold');
-                this.reaperSkullsSelect = get('reaper-skulls');
-                this.grazePercentInput = get('graze-percent');
-                this.imbueDiceCountInput = get('imbue-dice-count');
-                this.imbueDieTypeInput = get('imbue-die-type');
-                this.imbueScalingInput = get('imbue-scaling');
-                this.imbueUsesSpellpowerCheckbox = get('imbue-uses-spellpower');
-                this.imbueCritsCheckbox = get('imbue-crits');
-                this.calculateBtn = get('calculate-btn');
-                this.avgBaseDamageSpan = get('avg-base-damage');
-                this.avgSneakDamageSpan = get('avg-sneak-damage');
-                this.avgImbueDamageSpan = get('avg-imbue-damage');
-                this.avgUnscaledDamageSpan = get('avg-unscaled-damage'); // Get the new summary span
-                this.totalAvgDamageSpan = get('total-avg-damage');
-                this.weaponScalingSpan = get('weapon-scaling');
-                this.sneakScalingSpan = get('sneak-scaling');
-                this.imbueScalingBreakdownSpan = get('imbue-scaling-breakdown');
-                this.imbuePowerSourceSpan = get('imbue-power-source');
-                this.summaryHeader = get('summary-header');
-                this.reaperPenaltySpan = get('reaper-penalty');
-                this.rollDamageTbody = get('roll-damage-tbody');
-                
-                // Preset buttons
-                this.set75ScalingBtn = get('set-75-scaling-btn');
-                this.set100ScalingBtn = get('set-100-scaling-btn');
-                this.set150ScalingBtn = get('set-150-scaling-btn');
-                this.set200ScalingBtn = get('set-200-scaling-btn');
-                
-                this.unscaledRowsContainer = get('unscaled-rows-container');
-                this.addUnscaledRowBtn = get('add-unscaled-row-btn');
-            }
-
-            /**
-             * Parses a dice notation string (e.g., "2d6") and returns its average value.
-             * Also handles flat numbers.
-             * @param {string} diceString - The string to parse, like "1d8", "3d6", or "4.5".
-             * @returns {number} The calculated average damage.
-             */
-            parseDiceNotation(diceString) {
-                // Ensure we have a string, trim whitespace
-                let cleanString = (diceString || '').trim();
-
-                if (!cleanString) {
-                    return 0;
-                }
-
-                // First, find and replace all range notations (e.g., "100-300") with their average value.
-                // This prevents the '-' in a range from being treated as subtraction.
-                cleanString = cleanString.replace(/(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)/g, (match, minStr, maxStr) => {
-                    const min = parseFloat(minStr);
-                    const max = parseFloat(maxStr);
-                    return ((min + max) / 2).toString();
-                });
-                // Standardize operators: replace all '-' with '+-' to make splitting easier
-                cleanString = cleanString.replace(/\s/g, '');
-                // Handle negative numbers at the start of the string
-                if (cleanString.startsWith('-')) {
-                    cleanString = cleanString.substring(1).replace(/-/g, '+-');
-                    cleanString = '-' + cleanString;
-                } else {
-                    cleanString = cleanString.replace(/-/g, '+-');
-                }
-
-                // Split the string by the '+' operator to get all the terms
-                const terms = cleanString.split('+');
-
-                let totalAverage = 0;
-
-                for (const term of terms) {
-                    if (!term) continue; // Skip empty terms that can result from " -5"
-
-                    // Check if the term is a die roll (e.g., "2d6")
-                    if (term.toLowerCase().includes('d')) {
-                        const parts = term.toLowerCase().split('d');
-                        if (parts.length !== 2) continue; // Invalid format, skip
-
-                        const numDice = parseInt(parts[0], 10) || 1; // Default to 1 if missing, e.g., "d6"
-                        const numSides = parseInt(parts[1], 10);
-
-                        if (isNaN(numSides) || numSides <= 0) continue; // Invalid sides, skip
-
-                        // Average of one die is (sides + 1) / 2. Multiply by number of dice.
-                        totalAverage += numDice * (numSides + 1) / 2;
-                    } else {
-                        // If not a die roll, it's a flat number (e.g., "5" or "-2")
-                        totalAverage += parseFloat(term) || 0;
-                    }
-                }
-                return totalAverage;
-            }
-
-            /**
-             * Parses the critical threat input, which can be a number (e.g., "5")
-             * or a range (e.g., "16-20").
-             * @param {string} threatString - The value from the crit threat input field.
-             * @returns {number} The size of the threat range.
-             */
-            parseThreatRange(threatString) {
-                const cleanString = (threatString || '').trim();
-                
-                if (cleanString.includes('-')) {
-                    const parts = cleanString.split('-');
-                    if (parts.length === 2) {
-                        const start = parseInt(parts[0], 10);
-                        const end = parseInt(parts[1], 10);
-                        // Check for valid numbers and a valid DDO range (e.g., 16-20, not 20-16)
-                        if (!isNaN(start) && !isNaN(end) && start <= end && start >= 1 && end <= 20) {
-                            return end - start + 1;
-                        }
-                    }
-                } else {
-                    const rangeSize = parseInt(cleanString, 10);
-                    if (!isNaN(rangeSize) && rangeSize >= 1 && rangeSize <= 20) {
-                        return rangeSize;
-                    }
-                }
-                return 1; // Default to a range of 1 (a roll of 20) if input is invalid
-            }
-
-            /**
-             * Gathers all raw input values from the DOM.
-             * @returns {object} An object containing all necessary input values for calculation.
-             */
-            _getInputs() {
-                const isDoubleshot = this.isDoubleshotCheckbox.checked;
-                let multiStrikeValue = parseFloat(this.doublestrikeInput.value) || 0;
-                if (!isDoubleshot) {
-                    multiStrikeValue = Math.min(multiStrikeValue, 100);
-                }
-
-                return {
-                    additionalWeaponDice: parseInt(this.weaponDiceInput.value) || 0,
-                    parsedWeaponDmg: this.parseDiceNotation(this.weaponDamageInput.value) || 0,
-                    bonusBaseDmg: parseFloat(this.bonusBaseDamageInput.value) || 0,
-                    meleePower: parseFloat(this.meleePowerInput.value) || 0,
-                    spellPower: parseFloat(this.spellPowerInput.value) || 0,
-                    threatRange: this.parseThreatRange(this.critThreatInput.value),
-                    critMult: parseFloat(this.critMultiplierInput.value) || 2,
-                    critMult1920: parseFloat(this.critMultiplier1920Input.value) || 0,
-                    seekerDmg: parseFloat(this.seekerDamageInput.value) || 0,
-                    sneakDiceCount: parseInt(this.sneakAttackDiceInput.value) || 0,
-                    sneakBonusDmg: parseFloat(this.sneakBonusInput.value) || 0,
-                    missThreshold: Math.max(1, parseInt(this.missThresholdInput.value) || 1),
-                    grazeThreshold: parseInt(this.grazeThresholdInput.value) || 0,
-                    grazePercent: (parseFloat(this.grazePercentInput.value) || 0) / 100,
-                    reaperSkulls: parseInt(this.reaperSkullsSelect.value) || 0,
-                    imbueDiceCount: parseInt(this.imbueDiceCountInput.value) || 0,
-                    imbueDieType: parseInt(this.imbueDieTypeInput.value) || 0,
-                    imbueScaling: (parseFloat(this.imbueScalingInput.value) || 100) / 100,
-                    imbueCrits: this.imbueCritsCheckbox.checked,
-                    imbueUsesSpellpower: this.imbueUsesSpellpowerCheckbox.checked,
-                    doublestrikeChance: multiStrikeValue / 100,
-                    isDoubleshot: isDoubleshot,
-                    unscaled: this._parseUnscaledDamage()
-                };
-            }
-
-            /**
-             * Parses all unscaled damage rows and categorizes them.
-             * @returns {object} An object containing categorized unscaled damage values.
-             */
-            _parseUnscaledDamage() {
-                const unscaled = {
-                    normal_multi: 0,
-                    normal_noMulti: 0,
-                    crit_multi: 0,
-                    crit_noMulti: 0
-                };
-
-                let i = 1;
-                while (true) {
-                    const dmgInput = document.getElementById(`unscaled-damage-${i}${this.idSuffix}`);
-                    if (!dmgInput) break;
-
-                    const procInput = document.getElementById(`unscaled-proc-chance-${i}${this.idSuffix}`);
-                    const multiStrikeCheckbox = document.getElementById(`unscaled-doublestrike-${i}${this.idSuffix}`);
-                    const onCritCheckbox = document.getElementById(`unscaled-on-crit-${i}${this.idSuffix}`);
-
-                    if (procInput && multiStrikeCheckbox && onCritCheckbox) {
-                        const damage = this.parseDiceNotation(dmgInput.value);
-                        const procChance = (parseFloat(procInput.value) || 100) / 100;
-                        const averageDamage = damage * procChance;
-
-                        if (multiStrikeCheckbox.checked) {
-                            if (onCritCheckbox.checked) unscaled.crit_multi += averageDamage;
-                            else unscaled.normal_multi += averageDamage;
-                        } else {
-                            if (onCritCheckbox.checked) unscaled.crit_noMulti += averageDamage;
-                            else unscaled.normal_noMulti += averageDamage;
-                        }
-                    }
-                    i++;
-                }
-                return unscaled;
-            }
-
-            /**
-             * Calculates the probabilities of different hit outcomes based on d20 rolls.
-             * @param {object} inputs - The object containing miss, graze, and crit thresholds.
-             * @returns {object} An object with probabilities for each outcome.
-             */
-            _calculateProbabilities(inputs) {
-                const { missThreshold, grazeThreshold, threatRange } = inputs;
-                const critStartRoll = 21 - threatRange;
-                let missChance = 0, grazeChance = 0, normalCritChance = 0, specialCritChance = 0, normalChance = 0;
-
-                for (let roll = 1; roll <= 20; roll++) {
-                    if (roll <= missThreshold) missChance++;
-                    else if (roll <= grazeThreshold) grazeChance++;
-                    else if (roll >= 19 && roll >= critStartRoll) specialCritChance++;
-                    else if (roll >= critStartRoll) normalCritChance++;
-                    else normalChance++;
-                }
-
-                return {
-                    miss: missChance / 20,
-                    graze: grazeChance / 20,
-                    normal: normalChance / 20,
-                    normalCrit: normalCritChance / 20,
-                    specialCrit: specialCritChance / 20,
-                    crit: (normalCritChance + specialCritChance) / 20,
-                    hit: (normalChance + normalCritChance + specialCritChance) / 20
-                };
-            }
-
-            /**
-             * Calculates the base damage values for each component before applying probabilities or multipliers.
-             * @param {object} inputs - The object containing all raw input values.
-             * @returns {object} An object containing the calculated damage portions.
-             */
-            _calculateDamagePortions(inputs) {
-                const {
-                    additionalWeaponDice, parsedWeaponDmg, bonusBaseDmg, meleePower, spellPower,
-                    seekerDmg, sneakDiceCount, sneakBonusDmg, imbueDiceCount, imbueDieType,
-                    imbueScaling, imbueUsesSpellpower
-                } = inputs;
-
-                const baseDmg = parsedWeaponDmg + (additionalWeaponDice * parsedWeaponDmg) + bonusBaseDmg;
-                const powerMultiplier = 1 + (meleePower / 100);
-                const weaponPortion = baseDmg * powerMultiplier;
-                const seekerPortion = seekerDmg * powerMultiplier;
-
-                const sneakDiceDmg = sneakDiceCount * 3.5;
-                const sneakPortion = (sneakDiceDmg + sneakBonusDmg) * (1 + (meleePower * 1.5) / 100);
-
-                const imbueDice = imbueDiceCount * (imbueDieType + 1) / 2;
-                const powerForImbue = imbueUsesSpellpower ? spellPower : meleePower;
-                const imbuePortion = imbueDice * (1 + (powerForImbue * imbueScaling) / 100);
-
-                return { baseDmg, weaponPortion, seekerPortion, sneakDiceDmg, sneakPortion, imbueDice, imbuePortion, powerForImbue };
-            }
-
-            /**
-             * Calculates the final average damage values by combining portions, probabilities, and multipliers.
-             * @param {object} portions - The calculated damage portions.
-             * @param {object} probabilities - The calculated outcome probabilities.
-             * @param {object} inputs - The raw input values.
-             * @returns {object} An object containing the final average damage for each component.
-             */
-            _calculateAverages(portions, probabilities, inputs) {
-                const { critMult, critMult1920, grazePercent, reaperSkulls, doublestrikeChance, imbueCrits, unscaled } = inputs;
-                const { weaponPortion, seekerPortion, sneakPortion, imbuePortion } = portions;
-
-                const finalCritMult1920 = critMult + critMult1920;
-                const multiStrikeMultiplier = 1 + doublestrikeChance;
-
-                let reaperMultiplier = 1.0;
-                if (reaperSkulls > 0) {
-                    if (reaperSkulls <= 6) reaperMultiplier = 20 / (Math.pow(reaperSkulls, 2) + reaperSkulls + 24);
-                    else reaperMultiplier = 5 / (4 * reaperSkulls - 8);
-                }
-
-                const avgBaseHitDmg =
-                    (((weaponPortion + seekerPortion) * finalCritMult1920) * probabilities.specialCrit) +
-                    (((weaponPortion + seekerPortion) * critMult) * probabilities.normalCrit) +
-                    (weaponPortion * probabilities.normal) +
-                    (weaponPortion * grazePercent * probabilities.graze);
-
-                const avgSneakDmg = sneakPortion * (1 - probabilities.miss);
-                const avgImbueDmg = imbuePortion * (probabilities.hit + (imbueCrits ? probabilities.crit : 0));
-
-                const avgUnscaledNormal = ((unscaled.normal_multi * multiStrikeMultiplier) + unscaled.normal_noMulti) * probabilities.hit * reaperMultiplier;
-                const avgUnscaledCrit = (((unscaled.crit_multi * multiStrikeMultiplier) + unscaled.crit_noMulti) * reaperMultiplier) * probabilities.crit;
-
-                return {
-                    base: avgBaseHitDmg * multiStrikeMultiplier * reaperMultiplier,
-                    sneak: avgSneakDmg * multiStrikeMultiplier * reaperMultiplier,
-                    imbue: avgImbueDmg * multiStrikeMultiplier * reaperMultiplier,
-                    unscaled: avgUnscaledNormal + avgUnscaledCrit,
-                    reaperMultiplier,
-                    multiStrikeMultiplier
-                };
-            }
-
-            /**
-             * Updates the summary and breakdown sections of the UI with calculated results.
-             * @param {object} averages - The final average damage values.
-             * @param {object} portions - The calculated damage portions.
-             * @param {object} inputs - The raw input values.
-             */
-            _updateSummaryUI(averages, portions, inputs) {
-                this.avgBaseDamageSpan.textContent = averages.base.toFixed(2);
-                this.avgSneakDamageSpan.textContent = averages.sneak.toFixed(2);
-                this.avgImbueDamageSpan.textContent = averages.imbue.toFixed(2);
-                this.avgUnscaledDamageSpan.textContent = averages.unscaled.toFixed(2);
-                this.totalAvgDamageSpan.textContent = this.totalAverageDamage.toFixed(2);
-
-                const { baseDmg, sneakDiceDmg, sneakPortion, imbueDice, imbuePortion, powerForImbue } = portions;
-                const { meleePower, sneakBonusDmg, imbueScaling, imbueUsesSpellpower, spellPower } = inputs;
-
-                this.weaponScalingSpan.textContent = `${baseDmg.toFixed(2)} * (1 + (${meleePower} / 100)) = ${portions.weaponPortion.toFixed(2)}`;
-                this.sneakScalingSpan.textContent = `(${sneakDiceDmg.toFixed(2)} + ${sneakBonusDmg.toFixed(2)}) * (1 + (${meleePower} * 1.5) / 100) = ${sneakPortion.toFixed(2)}`;
-                this.imbueScalingBreakdownSpan.textContent = `${imbueDice.toFixed(2)} * (1 + (${powerForImbue} * ${imbueScaling * 100}%) / 100) = ${imbuePortion.toFixed(2)}`;
-                this.imbuePowerSourceSpan.textContent = imbueUsesSpellpower ? `Spell Power (${spellPower})` : `Melee Power (${meleePower})`;
-                this.reaperPenaltySpan.textContent = `${((1 - averages.reaperMultiplier) * 100).toFixed(1)}% Reduction`;
-            }
-
-            calculateDdoDamage() {
-                // 1. Gather all data
-                const inputs = this._getInputs();
-
-                // 2. Calculate probabilities of outcomes
-                const probabilities = this._calculateProbabilities(inputs);
-
-                // 3. Calculate base damage for each component
-                const portions = this._calculateDamagePortions(inputs);
-
-                // 4. Calculate final average damage, applying probabilities and multipliers
-                const averages = this._calculateAverages(portions, probabilities, inputs);
-
-                // 5. Store results on the instance for the comparison table
-                this.totalAvgBaseHitDmg = averages.base;
-                this.totalAvgSneakDmg = averages.sneak;
-                this.totalAvgImbueDmg = averages.imbue;
-                this.totalAvgUnscaledDmg = averages.unscaled;
-
-                // Calculate the grand total average damage
-                this.totalAverageDamage = this.totalAvgBaseHitDmg + this.totalAvgSneakDmg + this.totalAvgImbueDmg + this.totalAvgUnscaledDmg;
-
-                // 6. Update the UI with all the calculated values
-                this._updateSummaryUI(averages, portions, inputs);
-
-                // 7. Update the per-roll breakdown table
-                const critStartRoll = 21 - inputs.threatRange;
-                const finalCritMult1920 = inputs.critMult + inputs.critMult1920;
-                this.updateRollDamageTable({
-                    ...inputs,
-                    ...portions,
-                    ...averages,
-                    critStartRoll,
-                    finalCritMult1920,
-                    unscaled_normal_multi: inputs.unscaled.normal_multi,
-                    unscaled_normal_noMulti: inputs.unscaled.normal_noMulti,
-                    unscaled_crit_multi: inputs.unscaled.crit_multi,
-                    unscaled_crit_noMulti: inputs.unscaled.crit_noMulti
-                });
-            }
-
-            /**
-             * Populates the results table with damage for each d20 roll.
-             */
-            updateRollDamageTable(params) {
-                const { missThreshold, grazeThreshold, critStartRoll, weaponPortion, seekerPortion, sneakPortion, imbuePortion, imbueCrits, grazePercent, critMult, finalCritMult1920, multiStrikeMultiplier, reaperMultiplier, unscaled_normal_multi, unscaled_normal_noMulti, unscaled_crit_multi, unscaled_crit_noMulti } = params;
-                // Clear any existing rows from the table
-                this.rollDamageTbody.innerHTML = '';
-
-                for (let roll = 1; roll <= 20; roll++) {
-                    let baseDmg = 0, sneakDmg = 0, imbueDmg = 0;
-                    let rowClass = '';
-                    let outcome = '';
-
-                    if (roll <= missThreshold) { // Miss
-                        baseDmg = 0;
-                        sneakDmg = 0;
-                        imbueDmg = 0;
-                        outcome = 'Miss';
-                    } else if (roll <= grazeThreshold) { // Graze
-                        baseDmg = weaponPortion * grazePercent;
-                        sneakDmg = sneakPortion; // Sneak applies on graze
-                        imbueDmg = 0; // Imbue does not apply on graze
-                        rowClass = 'graze-row';
-                        outcome = 'Graze';
-                    } else if (roll >= 19 && roll >= critStartRoll) { // Special 19-20 Critical Hit
-                        baseDmg = (weaponPortion + seekerPortion) * finalCritMult1920;
-                        sneakDmg = sneakPortion;
-                        imbueDmg = imbuePortion * (1 + (imbueCrits ? 1 : 0));
-                        rowClass = 'crit-row';
-                        outcome = 'Critical';
-                    } else if (roll >= critStartRoll) { // Critical Hit
-                        baseDmg = (weaponPortion + seekerPortion) * critMult;
-                        sneakDmg = sneakPortion;
-                        imbueDmg = imbuePortion * (1 + (imbueCrits ? 1 : 0));
-                        rowClass = 'crit-row';
-                        outcome = 'Critical';
-                    } else { // Normal Hit
-                        baseDmg = weaponPortion;
-                        sneakDmg = sneakPortion;
-                        imbueDmg = imbuePortion;
-                        outcome = 'Hit';
-                    }
-
-                    // Apply multi-strike multiplier to each component
-                    const finalBase = baseDmg * multiStrikeMultiplier * reaperMultiplier;
-                    const finalSneak = sneakDmg * multiStrikeMultiplier * reaperMultiplier;
-                    const finalImbue = imbueDmg * multiStrikeMultiplier * reaperMultiplier;
-                    
-                    let finalUnscaled = 0;
-                    if (outcome === 'Hit' || outcome === 'Critical') {
-                        finalUnscaled += ((unscaled_normal_multi * multiStrikeMultiplier) + unscaled_normal_noMulti) * reaperMultiplier;
-                    }
-                    if (outcome === 'Critical') {
-                        finalUnscaled += (((unscaled_crit_multi * multiStrikeMultiplier) + unscaled_crit_noMulti) * reaperMultiplier);
-                    }
-                    const totalDamage = finalBase + finalSneak + finalImbue + finalUnscaled;
-
-                    // Create row and cells programmatically to prevent XSS.
-                    const row = document.createElement('tr');
-                    if (rowClass) {
-                        row.className = rowClass;
-                    }
-
-                    const createCell = (text) => {
-                        const cell = document.createElement('td');
-                        cell.textContent = text;
-                        return cell;
-                    };
-
-                    row.appendChild(createCell(roll));
-                    row.appendChild(createCell(finalBase.toFixed(2)));
-                    row.appendChild(createCell(finalSneak.toFixed(2)));
-                    row.appendChild(createCell(finalImbue.toFixed(2)));
-                    row.appendChild(createCell(finalUnscaled.toFixed(2)));
-                    row.appendChild(createCell(totalDamage.toFixed(2)));
-                    row.appendChild(createCell(outcome));
-
-                    this.rollDamageTbody.appendChild(row);
-                }
-            }
-
-            handleInputChange(action = null) {
-                if (action) this.manager.recordAction(action);
-                this.calculateDdoDamage();
-                this.manager.updateComparisonTable();
-                this.manager.saveState();
-            }
-
-            addEventListeners() {
-                this.calculateBtn.addEventListener('click', () => this.calculateDdoDamage());
-
-                // Add listeners for preset scaling buttons
-                // These are simple and don't need complex removal logic if the whole set is destroyed.
-                this.set75ScalingBtn?.addEventListener('click', (e) => this.handleSetScalingClick(e, 75));
-                this.set100ScalingBtn?.addEventListener('click', (e) => this.handleSetScalingClick(e, 100));
-                this.set150ScalingBtn?.addEventListener('click', (e) => this.handleSetScalingClick(e, 150));
-                this.set200ScalingBtn?.addEventListener('click', (e) => this.handleSetScalingClick(e, 200));
-
-                const calculatorElement = document.getElementById(`calculator-set-${this.setId}`);
-                let oldValue = null;
-
-                if (calculatorElement) {
-                    // Use 'mousedown' to capture the value right before a change might occur.
-                    // This works for clicks, typing, and stepper buttons.
-                    calculatorElement.addEventListener('mousedown', (e) => {
-                        const targetTag = e.target.tagName;
-                        if (targetTag === 'INPUT' || targetTag === 'SELECT') {
-                            oldValue = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-                        }
-                    });
-
-                    // Use 'input' for text/number fields as it fires immediately.
-                    // Use 'change' for checkboxes.
-                    const recordChange = (e) => {
-                        const targetTag = e.target.tagName;
-                        if (targetTag === 'INPUT' || targetTag === 'SELECT') {
-                            const newValue = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-                            // Only record if the value actually changed.
-                            if (oldValue !== newValue) {
-                                const action = {
-                                    type: 'valueChange',
-                                    setId: this.setId,
-                                    inputId: e.target.id,
-                                    oldValue: oldValue,
-                                    newValue: newValue
-                                };
-                                this.handleInputChange(action);
-                                // CRITICAL FIX: Update oldValue after recording the change.
-                                oldValue = newValue;
-                            }
-                        }
-                    };
-                    calculatorElement.addEventListener('input', recordChange);
-                    calculatorElement.addEventListener('change', recordChange);
-                }
-
-                 // Listener for adding a new unscaled damage row
-                this.addUnscaledRowBtn.addEventListener('click', (e) => this.addUnscaledDamageRow(e));
-
-                // Use event delegation for remove buttons. This single listener handles all
-                // and for number input +/- buttons.
-                // current and future remove buttons within this container.
-                this.unscaledRowsContainer.addEventListener('click', (e) => {
-                    // Check if a remove button was clicked
-                    if (e.target && e.target.classList.contains('remove-row-btn')) {
-                        e.preventDefault();
-                        // Find the closest parent row and remove it
-                        e.target.closest('.input-group-row').remove();
-                        // Trigger a recalculation and save state
-                        this.handleInputChange(); // This doesn't need an action, as removing rows isn't undoable (yet)
-                    }
-                });
-
-            }
-
-            addUnscaledDamageRow(e) {
-                e.preventDefault(); // Prevent any default button behavior
-
-                // Find the highest existing row number to avoid ID conflicts after removals
-                let maxRowId = 0;
-                this.unscaledRowsContainer.querySelectorAll('.input-group-row').forEach(row => {
-                    const firstInput = row.querySelector('input[id^="unscaled-damage-"]');
-                    if (firstInput) {
-                        const idNum = parseInt(firstInput.id.match(/unscaled-damage-(\d+)/)[1], 10);
-                        if (idNum > maxRowId) {
-                            maxRowId = idNum;
-                        }
-                    }
-                });
-                const newRowId = maxRowId + 1;
-
-                const newRow = document.createElement('div');
-                newRow.className = 'input-group-row';
-                newRow.innerHTML = `
-                    <label for="unscaled-damage-${newRowId}${this.idSuffix}">Unscaled Damage ${newRowId}</label>
-                    <input type="text" id="unscaled-damage-${newRowId}${this.idSuffix}" value="0" title="Additional source of unscaled damage">
-                    <label for="unscaled-proc-chance-${newRowId}${this.idSuffix}" class="short-label">Proc %</label><input type="number" id="unscaled-proc-chance-${newRowId}${this.idSuffix}" value="100" min="0" max="100" class="small-input" title="Chance for this damage to occur on a hit">
-                    <input type="checkbox" id="unscaled-doublestrike-${newRowId}${this.idSuffix}" checked><label for="unscaled-doublestrike-${newRowId}${this.idSuffix}" class="inline-checkbox-label" title="Should this damage scale with Doublestrike/Doubleshot?">Multi-Strike</label>
-                    <input type="checkbox" id="unscaled-on-crit-${newRowId}${this.idSuffix}"><label for="unscaled-on-crit-${newRowId}${this.idSuffix}" class="inline-checkbox-label" title="Should this damage only apply on a critical hit?">On Crit</label>
-                    <button class="remove-row-btn" title="Remove this damage source">&times;</button>                
-                `;
-
-                this.unscaledRowsContainer.appendChild(newRow);
-
-                // Add the change listener to all new inputs in the row
-                // Event delegation on the container handles these new inputs automatically.
-            }
-
-            removeEventListeners() {
-                // Remove listeners from all inputs
-                const calculatorElement = document.getElementById(`calculator-set-${this.setId}`);
-                if (calculatorElement) {
-                    const allInputs = calculatorElement.querySelectorAll('input');
-                    // Event listeners are on the container, which gets removed, so no need to manually remove them.
-                }
-                // With event delegation, we don't need to remove listeners from individual inputs.
-                // The listeners are on the container, which gets removed from the DOM entirely
-                // when a set is deleted, cleaning up the listeners automatically.
-            }
-
-            getState() {
-                const state = {};
-                const allInputs = document.querySelectorAll(`#calculator-set-${this.setId} input, #calculator-set-${this.setId} select`);
-                allInputs.forEach(input => {
-                    const key = input.id.replace(`-set${this.setId}`, '');
-                    if (input.type === 'checkbox') {
-                        state[key] = input.checked;
-                    } else {
-                        state[key] = input.value;
-                    }
-                });
-                return state;
-            }
-
-            // Retrieves the current name of the tab for this calculator instance
-            getTabName() {
-                const tab = document.querySelector(`.nav-tab[data-set="${this.setId}"] .tab-name`);
-                return tab ? tab.textContent : `Set ${this.setId}`;
-            }
-
-            setTabName(name) {
-                const tab = document.querySelector(`.nav-tab[data-set="${this.setId}"] .tab-name`);
-                if (tab) {
-                    tab.textContent = name;
-                }
-            }
-
-            setState(state) {
-                if (!state) return;
-
-                const allInputs = document.querySelectorAll(`#calculator-set-${this.setId} input, #calculator-set-${this.setId} select`);
-                allInputs.forEach(input => {
-                    const key = input.id.replace(`-set${this.setId}`, '');
-                    if (!state.hasOwnProperty(key)) {
-                        // If the key isn't in the state, it might be a dynamically added row that needs creating.
-                        if (key.startsWith('unscaled-damage-')) {
-                            const rowNum = parseInt(key.match(/unscaled-damage-(\d+)/)[1], 10);
-                            // Check if this row exists. If not, create it.
-                            if (!document.getElementById(input.id)) {
-                                this.addUnscaledDamageRow(new Event('dummy')); // Pass a dummy event
-                            }
-                        } else {
-                            return; // Skip other inputs not in state
-                        }
-                    }
-
-                    // If the key exists in the state, apply it
-                    if (input.type === 'checkbox') {
-                        input.checked = state[key];
-                    } else {
-                        input.value = state[key];
-                    }
-                });
-
-                // After loading state, count how many unscaled rows we have and update the counter
-                const unscaledDamageKeys = Object.keys(state).filter(k => k.startsWith('unscaled-damage-'));
-                this.unscaledRowCount = unscaledDamageKeys.length;
-
-
-                // After setting state, recalculate to update results
-                this.calculateDdoDamage();
-            }
-
-            applyValueChange(inputId, value) {
-                const input = document.getElementById(inputId);
-                if (!input) return;
-
-                if (input.type === 'checkbox') {
-                    input.checked = value;
-                } else {
-                    input.value = value;
-                }
-                // We don't record an action here because this is part of an undo/redo operation.
-                // We just recalculate and save the new overall state.
-                this.handleInputChange();
-            }
-
-            updateSummaryHeader() {
-                const tabName = this.getTabName();
-                if (this.summaryHeader) {
-                    this.summaryHeader.textContent = `Summary of ${tabName}`;
-                }
-            }
-
-            handleSetScalingClick(e, value) {
-                e.preventDefault();
-                this.imbueScalingInput.value = value;
-                // Manually trigger a change event so the calculation updates and state is saved
-                const changeEvent = new Event('change', { bubbles: true });
-                this.imbueScalingInput.dispatchEvent(changeEvent);
-            }
-        }
-
-        class CalculatorManager {
-            constructor() {
-                this.calculators = new Map();
-                this.navContainer = document.querySelector('.set-navigation');
-                this.setsContainer = document.querySelector('.calculator-wrapper');
-                this.addSetBtn = document.getElementById('add-set-btn');
-                this.comparisonTbody = document.getElementById('comparison-tbody'); // This is fine
-                this.templateHTML = this.getTemplateHTML();
-
-                // Import/Export Modal Elements
-                this.importBtn = document.getElementById('import-btn');
-                this.exportBtn = document.getElementById('export-btn');
-                this.modalBackdrop = document.getElementById('modal-backdrop');
-                this.modalTitle = document.getElementById('modal-title');
-                this.modalDescription = document.getElementById('modal-description');
-                this.modalTextarea = document.getElementById('modal-textarea');
-                this.modalCopyBtn = document.getElementById('modal-copy-btn');
-                this.modalSaveFileBtn = document.getElementById('modal-save-file-btn');
-                this.modalLoadBtn = document.getElementById('modal-load-btn');
-                this.modalFileInput = document.getElementById('modal-file-input');
-                this.formatJsonBtn = document.getElementById('format-json-btn');
-                this.formatSummaryBtn = document.getElementById('format-summary-btn');
-                this.modalCloseBtn = document.getElementById('modal-close-btn');
-
-                // Undo/Redo stacks
-                this.undoStack = [];
-                this.redoStack = [];
-
-                this.activeSetId = 1;
-
-                this.addSetBtn.addEventListener('click', () => this.addNewSet());
-                // Try to load state. If it fails (e.g., first visit), create the initial set.
-                if (!this.loadState()) {
-                    this.addNewSet(1);
-                    this.calculators.get(1)?.calculateDdoDamage(); // Perform initial calculation
-                }
-
-                this.addDragAndDropListeners();
-                this.addImportExportListeners();
-                this.addUndoRedoListeners();
-            }
-
-
-            addNewSet(setIdToUse = null) {
-                if (this.calculators.size >= 6) {
-                    alert("You have reached the maximum of 6 weapon sets.");
-                    return;
-                }
-
-                // If this is a user action (not part of loading or undo), record it.
-                if (setIdToUse === null) {
-                    // We need to know the ID before creating it.
-                    const futureSetId = this.findNextAvailableId();
-                    this.recordAction({ type: 'add', setId: futureSetId });
-                }
-
-                // Get the state of the currently active set to copy it
-                const activeCalc = this.calculators.get(this.activeSetId);
-                const stateToCopy = (setIdToUse === null && activeCalc) ? activeCalc.getState() : null; // Only copy state if creating a new set from an existing one
-
-                let newSetId;
-                if (setIdToUse !== null) {
-                    newSetId = setIdToUse;
-                    // Ensure the global nextSetId counter is always ahead of the largest known ID.
-                    // This prevents ID collisions when adding a new set after loading a specific set.
-                    if (newSetId >= nextSetId) {
-                        nextSetId = newSetId + 1;
-                    }
-                } else {
-                    newSetId = this.findNextAvailableId();
-                }
-                
-                /*
-                 * ===================================================================================
-                 *   ** FIX FOR DYNAMIC SET CREATION **
-                 *
-                 *   PREVIOUS ISSUE: Cloning was done using the .outerHTML of the first set.
-                 *   This included the container div ('<div id="calculator-set-1">...</div>').
-                 *   The ID replacement logic would then incorrectly create a new container with an ID like
-                 *   "calculator-set-set2" instead of the expected "calculator-set-2". This caused
-                 *   all subsequent DOM lookups for the new set to fail, making it unresponsive.
-                 *
-                 *   THE FIX:
-                 *   The current implementation correctly uses the .innerHTML of the template, which excludes the container.
-                 *   A new container 'div' is created programmatically, and its ID is set explicitly. This ensures
-                 *   that new sets have the correct structure and IDs, allowing them to be managed properly.
-                 * ===================================================================================
-                */
-
-                // Get the inner HTML of the template set (calculator-set-1)
-                const templateNode = document.getElementById('calculator-set-template').content.cloneNode(true);
-
-                // Replace IDs and 'for' attributes within the inner HTML
-                // Use a more specific regex to avoid accidentally modifying class names that contain "id=".
-                let modifiedInnerHtml = templateNode.firstElementChild.outerHTML.replace(/\s(id)="([^"]+)"/g, (match, attr, id) => {
-                    // For inner elements, the original ID (e.g., "weapon-dice") is the base ID.
-                    // We just append the newSetId suffix.
-                    return ` id="${id}-set${newSetId}"`;
-                });
-                modifiedInnerHtml = modifiedInnerHtml.replace(/for="([^"]+)"/g, (match, id) => {
-                    return `for="${id}-set${newSetId}"`;
-                });
-
-                // Create the new container div and set its properties
-                const newSetContainer = document.createElement('div');
-                newSetContainer.id = `calculator-set-${newSetId}`; // e.g., calculator-set-2
-                newSetContainer.className = 'calculator-container calculator-set'; // Copy classes from template
-                newSetContainer.innerHTML = modifiedInnerHtml; // Set the modified inner HTML
-
-                // Append the new container to the DOM
-                this.setsContainer.appendChild(newSetContainer);
-
-                // Create and add the new tab
-                const tab = this.createTab(newSetId);
-                this.navContainer.insertBefore(tab, this.addSetBtn);
-
-                this.calculators.set(newSetId, new Calculator(newSetId, this, `Set ${newSetId}`));
-                const newCalc = this.calculators.get(newSetId);
-
-                // If we have a state to copy, apply it to the new set
-                if (stateToCopy && newCalc) {
-                    newCalc.setState(stateToCopy);
-                }
-
-                this.switchToSet(newSetId);
-                if (!this.isLoading) {
-                    this.saveState();
-                }
-                this.updateComparisonTable();
-            }
-
-            createTab(setId) {
-                const tab = document.createElement('div');
-                tab.className = 'nav-tab';
-                tab.draggable = true; // Make the tab draggable
-                tab.dataset.set = setId;
-
-                const tabNameSpan = document.createElement('span');
-                tabNameSpan.className = 'tab-name';
-                tabNameSpan.textContent = `Set ${setId}`;
-                tabNameSpan.contentEditable = true;
-                tabNameSpan.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        tabNameSpan.blur();
-                    }
-                });
-                tabNameSpan.addEventListener('blur', () => {
-                    const calc = this.calculators.get(setId);
-                    if (calc) {
-                        calc.handleInputChange(); // This will trigger a save
-                        if (this.activeSetId === setId) {
-                            calc.updateSummaryHeader();
-                        }
-                    }
-                });
-
-                // We'll handle recording the name change via focus/blur on the span
-                this.addNameChangeListeners(tabNameSpan, setId);
-
-                const closeBtn = document.createElement('button');
-                closeBtn.className = 'close-tab-btn';
-                closeBtn.innerHTML = '&times;';
-                closeBtn.title = 'Remove this set';
-                closeBtn.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent tab switch when closing
-                    this.removeSet(setId);
-                });
-
-                tab.appendChild(tabNameSpan);
-                tab.appendChild(closeBtn);
-                tab.addEventListener('click', () => this.switchToSet(setId));
-                return tab;
-            }
-
-            addNameChangeListeners(span, setId) {
-                let oldName = '';
-                span.addEventListener('focus', () => {
-                    oldName = span.textContent;
-                });
-                span.addEventListener('blur', () => {
-                    const newName = span.textContent;
-                    if (oldName !== newName) {
-                        this.recordAction({
-                            type: 'rename',
-                            setId: setId,
-                            oldValue: oldName,
-                            newValue: newName
-                        });
-                        // Trigger a save and update
-                        const calc = this.calculators.get(setId);
-                        if (calc) {
-                            calc.handleInputChange();
-                            if (this.activeSetId === setId) calc.updateSummaryHeader();
-                        }
-                    }
-                });
-            }
-
-            recreateSet(setId, state, index) {
-                this.addNewSet(setId); // Recreate the set using its original ID
-                const newCalc = this.calculators.get(setId);
-                if (newCalc) {
-                    newCalc.setState(state);
-                    newCalc.setTabName(state.tabName);
-                    newCalc.updateSummaryHeader();
-                }
-                // When undoing a tab closure, we don't want to automatically switch to it.
-                // We'll just make sure the currently active tab remains visibly active.
-                // The new tab will be created but won't be active unless it was the only one.
-                this.switchToSet(this.activeSetId || setId);
-            }
-
-            removeSet(setId, isLoading = false) {
-                if (this.calculators.size <= 1) {
-                    // Allow removing the last set.
-                }
-
-                // Clean up
-                const calcToRemove = this.calculators.get(setId);
-
-                // If this is a user action (not part of loading or undo), record it.
-                if (!isLoading) {
-                    const state = calcToRemove.getState();
-                    state.tabName = calcToRemove.getTabName();
-                    const tabs = [...this.navContainer.querySelectorAll('.nav-tab')];
-                    const index = tabs.findIndex(tab => parseInt(tab.dataset.set, 10) === setId);
-
-                    this.recordAction({ type: 'remove', setId, state, index });
-                }
-
-                calcToRemove?.removeEventListeners();
-                this.calculators.delete(setId);
-
-                document.getElementById(`calculator-set-${setId}`).remove();
-                document.querySelector(`.nav-tab[data-set="${setId}"]`).remove();
-
-                // If we deleted the active tab, switch to a new one
-                if (this.activeSetId === setId) {
-                    if (this.calculators.size > 0) {
-                        const firstSetId = this.calculators.keys().next().value;
-                        this.switchToSet(firstSetId);
-                    } else {
-                        this.activeSetId = null; // No active set
-                    }
-                }
-                // Otherwise, the active tab remains the same, which is fine.
-
-                if (!isLoading) {
-                    this.saveState();
-                    this.updateComparisonTable();
-                }
-            }
-
-            switchToSet(setId) {
-                // Deactivate all
-                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.calculator-set').forEach(s => s.classList.remove('active'));
-
-                // Activate the selected one
-                document.querySelector(`.nav-tab[data-set="${setId}"]`).classList.add('active');
-                document.getElementById(`calculator-set-${setId}`).classList.add('active');
-                this.activeSetId = setId;
-                this.calculators.get(setId)?.updateSummaryHeader(); // Update the header of the newly active set
-            }
-
-            updateComparisonTable() {
-                if (!this.comparisonTbody) return;
-
-                this.comparisonTbody.innerHTML = ''; // Clear existing rows
-
-                // First, find the maximum total average damage among all sets
-                let maxDamage = 0;
-                if (this.calculators.size > 0) {
-                    const allDamages = Array.from(this.calculators.values()).map(calc => calc.totalAverageDamage);
-                    maxDamage = Math.max(...allDamages);
-                }
-
-                this.calculators.forEach(calc => {
-                    const row = document.createElement('tr');
-
-                    let diffText = 'N/A';
-                    if (maxDamage > 0) {
-                        if (calc.totalAverageDamage === maxDamage) {
-                            diffText = `<span class="best-damage-badge">Best</span>`;
-                        } else {
-                            const diff = ((calc.totalAverageDamage - maxDamage) / maxDamage) * 100;
-                            diffText = `${diff.toFixed(1)}%`;
-                        }
-                    }
-
-                    // Create cells programmatically to prevent XSS from user-provided tab names.
-                    const nameCell = document.createElement('td');
-                    nameCell.textContent = calc.getTabName(); // .textContent is safe
-                    row.appendChild(nameCell);
-
-                    const totalDmgCell = document.createElement('td');
-                    totalDmgCell.textContent = calc.totalAverageDamage.toFixed(2);
-                    row.appendChild(totalDmgCell);
-
-                    const diffCell = document.createElement('td');
-                    diffCell.innerHTML = diffText; // Safe because diffText is internally generated ('Best' badge or a number)
-                    row.appendChild(diffCell);
-
-                    const baseCell = document.createElement('td');
-                    baseCell.textContent = calc.totalAvgBaseHitDmg.toFixed(2);
-                    row.appendChild(baseCell);
-
-                    const sneakCell = document.createElement('td');
-                    sneakCell.textContent = calc.totalAvgSneakDmg.toFixed(2);
-                    row.appendChild(sneakCell);
-
-                    const imbueCell = document.createElement('td');
-                    imbueCell.textContent = calc.totalAvgImbueDmg.toFixed(2);
-                    row.appendChild(imbueCell);
-
-                    const unscaledCell = document.createElement('td');
-                    unscaledCell.textContent = calc.totalAvgUnscaledDmg.toFixed(2);
-                    row.appendChild(unscaledCell);
-
-                    this.comparisonTbody.appendChild(row);
-                });
-            }
-
-            addDragAndDropListeners() {
-                let draggedTab = null;
-                let placeholder = null; // Placeholder element for drop location
-
-                // Use event delegation on the container for drag events
-                this.navContainer.addEventListener('dragstart', (e) => {
-                    const target = e.target.closest('.nav-tab');
-                    if (target) {
-                        draggedTab = target;
-                        // Use setTimeout to allow the browser to create the drag image before we add the class
-
-                        // Create placeholder
-                        placeholder = document.createElement('div');
-                        placeholder.className = 'nav-tab-placeholder';
-                        placeholder.style.width = `${draggedTab.offsetWidth}px`;
-                        placeholder.style.height = `${draggedTab.offsetHeight}px`;
-
-                        setTimeout(() => {
-                            draggedTab.classList.add('dragging');
-                        }, 0);
-                    }
-                });
-
-                this.navContainer.addEventListener('dragend', (e) => {
-                    if (draggedTab) {
-                        draggedTab.classList.remove('dragging');
-                        draggedTab = null;
-                        // Clean up placeholder
-                        if (placeholder && placeholder.parentNode) {
-                            placeholder.parentNode.removeChild(placeholder);
-                        }
-                        placeholder = null;
-                    }
-                });
-
-                this.navContainer.addEventListener('dragover', (e) => {
-                    e.preventDefault(); // This is necessary to allow a drop
-                    if (!placeholder) return;
-
-                    // If dragging over the 'add' button, treat it as a dead zone
-                    if (e.target.closest('#add-set-btn')) {
-                        if (placeholder && placeholder.parentNode) {
-                            placeholder.parentNode.removeChild(placeholder);
-                        }
-                        return;
-                    }
-
-                    const afterElement = this._getDragAfterElement(this.navContainer, e.clientX);
-                    
-                    if (afterElement === null) {
-                        // Insert placeholder before the 'Add Set' button
-                        this.navContainer.insertBefore(placeholder, this.addSetBtn);
-                    } else {
-                        // Insert placeholder before the element we're hovering over
-                        this.navContainer.insertBefore(placeholder, afterElement);
-                    }
-                });
-
-                this.navContainer.addEventListener('dragleave', (e) => {
-                    // Note: dragleave logic is simplified as the placeholder handles visual state.
-                    // We could add logic to remove the placeholder if the mouse leaves the container,
-                    // but dragend will handle cleanup reliably.
-                });
-
-                this.navContainer.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    if (!draggedTab) return;
-
-                    const afterElement = this._getDragAfterElement(this.navContainer, e.clientX);
-                    const draggedSetId = draggedTab.dataset.set;
-                    const draggedContainer = document.getElementById(`calculator-set-${draggedSetId}`);
-
-                    if (afterElement == null) {
-                        // Dropping at the end
-                        this.navContainer.insertBefore(draggedTab, this.addSetBtn);
-                        this.setsContainer.appendChild(draggedContainer);
-                    } else {
-                        // Dropping before another element
-                        const afterElementSetId = afterElement.dataset.set;
-                        const afterContainer = document.getElementById(`calculator-set-${afterElementSetId}`);
-                        this.navContainer.insertBefore(draggedTab, afterElement);
-                        this.setsContainer.insertBefore(draggedContainer, afterContainer);
-                    }
-
-                    // After reordering, ensure the active tab's class is correctly applied
-                    // This handles cases where the active tab itself was dragged
-                    this.switchToSet(this.activeSetId);
-                    this.saveState(); // Save the new order
-                });
-            }
-            
-            addImportExportListeners() {
-                this.exportBtn.addEventListener('click', () => this.showExportModal());
-                this.importBtn.addEventListener('click', () => this.showImportModal());
-                this.modalCloseBtn.addEventListener('click', () => this.hideModal());
-                this.modalBackdrop.addEventListener('click', (e) => {
-                    if (e.target === this.modalBackdrop) {
-                        this.hideModal();
-                    }
-                });
-
-                this.modalCopyBtn.addEventListener('click', () => this.copyToClipboard());
-                this.modalSaveFileBtn.addEventListener('click', () => this.saveToFile());
-                this.modalLoadBtn.addEventListener('click', () => this.importFromText());
-
-                // Trigger file input when "Load from File" is conceptually clicked
-                this.modalFileInput.addEventListener('change', (e) => this.importFromFile(e));
-
-                // Listeners for format toggle
-                this.formatJsonBtn.addEventListener('click', () => this.setExportFormat('json'));
-                this.formatSummaryBtn.addEventListener('click', () => this.setExportFormat('summary'));
-            }
-
-            showExportModal() {
-                this.modalTitle.textContent = 'Export Sets';
-                this.modalDescription.textContent = 'Copy the text below or save it to a file to import later.';
-                this.modalTextarea.value = this.getSetsAsJSON();
-                this.modalTextarea.readOnly = true;
-
-                // Show export elements, hide import elements
-                this.modalCopyBtn.classList.remove('hidden');
-                this.modalSaveFileBtn.classList.remove('hidden');
-                this.modalLoadBtn.classList.add('hidden');
-                this.modalFileInput.classList.add('hidden');
-                document.querySelector('.modal-format-toggle').classList.remove('hidden');
-
-                this.modalBackdrop.classList.remove('hidden');
-                this.setExportFormat('json'); // Default to JSON
-            }
-
-            setExportFormat(format) {
-                this.formatJsonBtn.classList.toggle('active', format === 'json');
-                this.formatSummaryBtn.classList.toggle('active', format === 'summary');
-                this.modalTextarea.value = format === 'json' ? this.getSetsAsJSON() : this.getSetsAsSummary();
-                this.modalDescription.textContent = format === 'json' ? 'Copy the text below or save it to a file to import later.' : 'A human-readable summary for sharing or saving as a .txt file.';
-            }
-
-            showImportModal() {
-                this.modalTitle.textContent = 'Import Sets';
-                this.modalDescription.textContent = 'Paste set data into the text area and click "Load", or upload a file.';
-                this.modalTextarea.value = '';
-                this.modalTextarea.readOnly = false;
-                this.modalTextarea.placeholder = 'Paste your exported set data here...';
-
-                // Show import elements, hide export elements
-                this.modalCopyBtn.classList.add('hidden');
-                this.modalSaveFileBtn.classList.add('hidden');
-                this.modalLoadBtn.classList.remove('hidden');
-                // We don't show the file input directly, but we'll trigger it.
-                document.querySelector('.modal-format-toggle').classList.add('hidden');
-                // Let's repurpose the "Save to File" button to be "Load from File"
-                this.modalSaveFileBtn.textContent = 'Load from File';
-                this.modalSaveFileBtn.classList.remove('hidden');
-                this.modalSaveFileBtn.onclick = () => this.modalFileInput.click(); // Re-route click
-
-                this.modalBackdrop.classList.remove('hidden');
-            }
-
-            hideModal() {
-                this.modalBackdrop.classList.add('hidden');
-                // Reset the repurposed button
-                this.modalSaveFileBtn.textContent = 'Save to File';
-                this.modalSaveFileBtn.onclick = () => this.saveToFile();
-            }
-
-            getSetsAsJSON() {
-                const stateToSave = [];
-                const orderedTabs = this.navContainer.querySelectorAll('.nav-tab');
-                orderedTabs.forEach(tab => {
-                    const setId = parseInt(tab.dataset.set, 10);
-                    const calc = this.calculators.get(setId);
-                    if (calc) {
-                        const state = calc.getState();
-                        state.tabName = calc.getTabName();
-                        state.setId = calc.setId;
-                        stateToSave.push(state);
-                    }
-                });
-                return JSON.stringify(stateToSave, null, 2); // Pretty-print the JSON
-            }
-
-            getSetsAsSummary() {
-                let summary = `DDO Damage Calculator Export\nGenerated: ${new Date().toLocaleString()}\n\n`;
-                const orderedTabs = this.navContainer.querySelectorAll('.nav-tab');
-
-                orderedTabs.forEach(tab => {
-                    const setId = parseInt(tab.dataset.set, 10);
-                    const calc = this.calculators.get(setId);
-                    if (!calc) return;
-
-                    const state = calc.getState();
-                    summary += `========================================\n`;
-                    summary += `  Set: ${calc.getTabName()}\n`;
-                    summary += `========================================\n\n`;
-
-                    summary += `--- Base Damage ---\n`;
-                    summary += `Weapon Dice [W]: ${state['weapon-dice'] || 0}\n`;
-                    summary += `Damage: ${state['weapon-damage'] || '0'} + ${state['bonus-base-damage'] || 0}\n\n`;
-
-                    summary += `--- Critical Profile ---\n`;
-                    summary += `Threat Range: ${state['crit-threat'] || '20'}\n`;
-                    summary += `Multiplier: x${state['crit-multiplier'] || 2}\n`;
-                    summary += `Seeker: +${state['seeker-damage'] || 0}\n`;
-                    summary += `19-20 Multiplier: +${state['crit-multiplier-19-20'] || 0}\n\n`;
-
-                    summary += `--- Hit/Miss Profile ---\n`;
-                    summary += `Miss on Roll <=: ${state['miss-threshold'] || 1}\n`;
-                    summary += `Graze on Roll <=: ${state['graze-threshold'] || 0}\n`;
-                    summary += `Graze Damage: ${state['graze-percent'] || 0}%\n\n`;
-
-                    summary += `--- Unscaled Damage ---\n`;
-                    let i = 1;
-                    while (state.hasOwnProperty(`unscaled-damage-${i}`)) {
-                        const damage = state[`unscaled-damage-${i}`] || '0';
-                        if (damage && damage !== '0') {
-                            const proc = state[`unscaled-proc-chance-${i}`] || 100;
-                            const multi = state[`unscaled-doublestrike-${i}`] ? 'Yes' : 'No';                            
-                            const onCrit = state[`unscaled-on-crit-${i}`] ? ', On Crit Only' : '';
-                            summary += `Source ${i}: ${damage} @ ${proc}% Proc, Multi-Strike: ${multi}${onCrit}\n`;
-                        }
-                        i++;
-                    }
-                    summary += `Melee/Ranged Power: ${state['melee-power'] || 0}\n`;
-                    summary += `Spell Power: ${state['spell-power'] || 0}\n`;
-                    summary += `Multi-Strike: ${state['doublestrike'] || 0}% (${state['is-doubleshot'] ? 'Doubleshot' : 'Doublestrike'})\n\n`;
-
-                    summary += `--- Sneak Attack ---\n`;
-                    summary += `Damage: ${state['sneak-attack-dice'] || 0}d6 + ${state['sneak-bonus'] || 0}\n\n`;
-
-                    summary += `--- Imbue Dice ---\n`;
-                    summary += `Dice: ${state['imbue-dice-count'] || 0}d${state['imbue-die-type'] || 6}\n`;
-                    summary += `Scaling: ${state['imbue-scaling'] || 100}% of ${state['imbue-uses-spellpower'] ? 'Spell Power' : 'Melee Power'}\n\n`;
-
-                    summary += `--- AVERAGES ---\n`;
-                    summary += `Total Avg Damage: ${calc.totalAverageDamage.toFixed(2)}\n`;
-                    summary += `Avg Base: ${calc.totalAvgBaseHitDmg.toFixed(2)}, Avg Sneak: ${calc.totalAvgSneakDmg.toFixed(2)}, Avg Imbue: ${calc.totalAvgImbueDmg.toFixed(2)}, Avg Unscaled: ${calc.totalAvgUnscaledDmg.toFixed(2)}\n\n\n`;
-                });
-
-                return summary;
-            }
-
-            copyToClipboard() {
-                navigator.clipboard.writeText(this.modalTextarea.value).then(() => {
-                    alert('Set data copied to clipboard!');
-                }).catch(err => {
-                    console.error('Failed to copy text: ', err);
-                    alert('Failed to copy. Please copy manually from the text box.');
-                });
-            }
-
-            saveToFile() {
-                const isJson = this.formatJsonBtn.classList.contains('active');
-                const data = this.modalTextarea.value;
-                const fileType = isJson ? 'application/json' : 'text/plain';
-                const fileName = isJson ? 'ddo-calc-sets.json' : 'ddo-calc-summary.txt';
-                const blob = new Blob([data], { type: fileType });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }
-
-            importFromText() {
-                const jsonString = this.modalTextarea.value;
-                if (!jsonString.trim()) {
-                    alert('Text area is empty. Please paste your set data.');
-                    return;
-                }
-                this.loadSetsFromJSON(jsonString);
-            }
-
-            importFromFile(event) {
-                const file = event.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const jsonString = e.target.result;
-                    this.loadSetsFromJSON(jsonString);
-                };
-                reader.onerror = () => {
-                    alert('Error reading file.');
-                };
-                reader.readAsText(file);
-
-                // Reset file input to allow loading the same file again
-                event.target.value = '';
-            }
-
-            // This method is called when a user directly changes an input,
-            // or when an undo/redo action is completed.
-            // It should not be called during the loading process.
-            saveState() {
-                if (this.isLoading) return; // Don't save while loading
-
-                const stateToSave = [];
-                // Get tabs in their current DOM order to save the correct sequence
-                const orderedTabs = this.navContainer.querySelectorAll('.nav-tab');
-                orderedTabs.forEach(tab => {
-                    const setId = parseInt(tab.dataset.set, 10);
-                    const calc = this.calculators.get(setId);
-                    const state = calc.getState();
-                    state.tabName = calc.getTabName(); // Save the tab name
-                    state.setId = calc.setId; // Save the ID
-                    stateToSave.push(state);
-                })
-                sessionStorage.setItem('calculatorState', JSON.stringify(stateToSave));
-            }
-
-            loadState() {
-                const jsonString = sessionStorage.getItem('calculatorState');
-                if (this.loadSetsFromJSON(jsonString)) {
-                    return true;
-                }
-                return false;
-            }
-
-            loadSetsFromJSON(jsonString) {
-                if (!jsonString) return false;
-
-                let savedStates;
-                try {
-                    savedStates = JSON.parse(jsonString);
-                    if (!Array.isArray(savedStates) || savedStates.length === 0) {
-                        throw new Error("Data is not a valid array of sets.");
-                    }
-                } catch (error) {
-                    console.error("Failed to parse set data:", error);
-                    alert("Import failed. The provided data is not valid JSON or is incorrectly formatted.");
-                    return false;
-                }
-                
-                this.isLoading = true;
-
-                // Clear existing sets
-                this.calculators.forEach((calc, setId) => this.removeSet(setId, true));
-                this.calculators.clear();
-                this.setsContainer.innerHTML = '';
-                this.navContainer.querySelectorAll('.nav-tab').forEach(tab => tab.remove());
-                nextSetId = 1; // Reset counter
-
-                savedStates.forEach((state) => {
-                    // The `loadSetsFromJSON` function will now create a new set, and then `setState` will
-                    // dynamically add the required number of unscaled rows before populating their values.
-                    // This is a more robust approach.
-                    
-                    this.addNewSet(state.setId); // Create the set with its correct ID
-                    const newCalc = this.calculators.get(state.setId);
-                    newCalc?.setState(state); // Set state first
-                    newCalc?.setTabName(state.tabName); // Then set the name
-                    newCalc?.updateSummaryHeader();
-                });
-
-                this.switchToSet(savedStates[0].setId); // Activate the first set from the saved state
-                this.isLoading = false;
-                this.updateComparisonTable(); // Populate comparison table after loading
-                this.hideModal();
-                return true;
-            }
-
-            addUndoRedoListeners() {
-                document.addEventListener('keydown', (e) => {
-                    // Check for Ctrl+Z (Undo)
-                    if (e.ctrlKey && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-                        e.preventDefault();
-                        this.undo();
-                    }
-                    // Check for Ctrl+Y or Ctrl+Shift+Z (Redo)
-                    if ((e.ctrlKey && e.key.toLowerCase() === 'y') || (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'z')) {
-                        e.preventDefault();
-                        this.redo();
-                    }
-                });
-            }
-
-            recordAction(action) {
-                this.undoStack.push(action);
-                // A new action clears the redo stack
-                this.redoStack = [];
-            }
-
-            undo() {
-                if (this.undoStack.length === 0) return;
-
-                const action = this.undoStack.pop();
-                this.isLoading = true; // Prevent saving state during undo
-
-                if (action.type === 'remove') {
-                    // To undo a remove, we add the set back
-                    this.recreateSet(action.setId, action.state, action.index);
-                    // The redo action is to remove it again
-                    this.redoStack.push({ ...action, type: 'remove' });
-                } else if (action.type === 'add') {
-                    // To undo an add, we remove the set
-                    this.removeSet(action.setId, true); // Use isLoading to prevent recording
-                    // The redo action is to add it back
-                    this.redoStack.push({ ...action, type: 'add' }); // The 'add' action doesn't have a state to copy
-                } else if (action.type === 'valueChange' || action.type === 'rename') {
-                    const calc = this.calculators.get(action.setId);
-                    calc?.applyValueChange(action.inputId || `tab-name-${action.setId}`, action.oldValue);
-                    this.redoStack.push(action);
-                }
-
-                this.isLoading = false;
-                this.saveState();
-                this.updateComparisonTable();
-            }
-
-            redo() {
-                if (this.redoStack.length === 0) return;
-
-                const action = this.redoStack.pop();
-                this.isLoading = true; // Prevent saving state during redo
-
-                if (action.type === 'remove') {
-                    this.removeSet(action.setId, true);
-                    this.undoStack.push({ ...action, type: 'remove' });
-                } else if (action.type === 'add') {
-                    this.recreateSet(action.setId, action.state, action.index);
-                    this.undoStack.push({ ...action, type: 'add' });
-                } else if (action.type === 'valueChange' || action.type === 'rename') {
-                    const calc = this.calculators.get(action.setId);
-                    calc?.applyValueChange(action.inputId || `tab-name-${action.setId}`, action.newValue);
-                    this.undoStack.push(action);
-                }
-
-                this.isLoading = false;
-                this.saveState();
-                this.updateComparisonTable();
-            }
-
-            /**
-             * Helper function to determine the element a dragged tab should be placed before.
-             * @param {HTMLElement} container - The parent container of the draggable elements.
-             * @param {number} x - The current X coordinate of the mouse during drag.
-             * @returns {HTMLElement|null} The element to drop before, or null if dropping at the end.
-             */
-            _getDragAfterElement(container, x) {
-                const draggableElements = [...container.querySelectorAll('.nav-tab:not(.dragging)')];
-                return draggableElements.reduce((closest, child) => {
-                    const box = child.getBoundingClientRect();
-                    const offset = x - box.left - box.width / 2;
-                    return (offset < 0 && offset > closest.offset) ? { offset: offset, element: child } : closest;
-                }, { offset: Number.NEGATIVE_INFINITY }).element;
-            }
-            // Global Enter key listener
-            addGlobalEnterListener() {
-                document.addEventListener('keyup', (event) => {
-                    if (event.key === 'Enter') {
-                        event.preventDefault(); // Prevent default browser behavior (e.g., form submission)
-                        this.calculators.get(this.activeSetId)?.calculateDdoDamage();
-                    }
-                });
-            }
-
-            getTemplateHTML() {
-                const templateNode = document.getElementById('calculator-set-template');
-                return templateNode ? templateNode.innerHTML : '';
-            }
-
-            findNextAvailableId() {
-                let id = 1;
-                while (this.calculators.has(id)) {
-                    id++;
-                }
-                if (id >= nextSetId) nextSetId = id + 1;
-                return id;
-            }
-        }
-
-            // --- Theme Toggler Logic ---
-            const themeToggleCheckbox = document.getElementById('theme-toggle-checkbox');
-            const body = document.body;
-            const currentTheme = localStorage.getItem('theme');
-
-            // Apply saved theme on load
-            if (themeToggleCheckbox) {
-                if (currentTheme === 'dark') {
-                    body.classList.add('dark-mode');
-                    themeToggleCheckbox.checked = true;
-                }
-
-                themeToggleCheckbox.addEventListener('change', () => {
-                    body.classList.toggle('dark-mode');
-                    let theme = 'light';
-                    if (body.classList.contains('dark-mode')) {
-                        theme = 'dark';
-                    }
-                    localStorage.setItem('theme', theme);
-                });
-            }
-
-            // --- Instantiate Manager ---
-            const manager = new CalculatorManager();
-            manager.addGlobalEnterListener(); // Add the global listener after manager is ready
-        });
-    </script>
+    <script src="SpellCalculator.js"></script>
+    <script src="script.js"></script>
 </body>
+
 </html>
+
+
+<!-- hi gemini can you read this ? -->
