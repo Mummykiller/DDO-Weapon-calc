@@ -320,7 +320,7 @@
                     <label class="section-headline">Spell Crafter</label>
                     <div id="spell-damage-rows-container">
                         <!-- Default spell damage row -->
-                        <div class="input-group-row">
+                        <div class="input-group-row spell-damage-source-row">
                             <input type="text" id="spell-name-1" value="Spell 1" title="Name of the spell component"
                                 placeholder="Spell Name" class="adaptive-text-input">
                             <label for="spell-damage-1">Base Damage</label>
@@ -333,8 +333,10 @@
                             <label for="caster-level-1" class="short-label">CL</label>
                             <input type="number" id="caster-level-1" value="20" class="small-input"
                                 title="Caster Level for this damage component">
+                            <label for="spell-hit-count-1" class="short-label">Hits</label>
+                            <input type="number" id="spell-hit-count-1" value="1" min="1" class="small-input"
+                                title="Number of times this spell component hits">
                             <button class="add-scaling-input-btn small-btn" title="Add additional scaling input">+</button>
-                            <button class="remove-scaling-input-btn small-btn hidden" title="Remove last additional scaling input">-</button>
                             <button class="remove-row-btn" title="Remove this damage source">&times;</button>
                         </div>
                     </div>
@@ -342,39 +344,52 @@
                     <button id="add-spell-damage-row-btn" class="small-btn" style="width: auto; margin-top: 0.5rem;">Add
                         Spell Damage Source</button>
                 </div>
-                <div class="stats-group">
+                <div class="stats-group" id="spell-power-group">
                     <label class="section-headline">Spell Power & Criticals</label>
-                    <div class="input-group-row">
-                        <label for="spell-power">Spell Power</label>
-                        <input type="number" id="spell-power" value="500" class="small-input"
-                            title="Your spell power for the spell's damage type.">
-                        <span class="plus-symbol">+</span>
-                        <span id="metamagic-spell-power-bonus" class="read-only-bonus">0</span>
+                    <div id="spell-power-sources-container">
+                        <div class="stats-group spell-power-profile" data-profile-id="1">
+                            <div class="profile-header">
+                                <label class="section-headline">Spell Power & Criticals 1</label>
+                                <input type="text" id="spell-power-type-1" class="adaptive-text-input"
+                                    placeholder="Element Type" title="e.g., Fire, Acid, etc.">
+                            </div>
+                            <div class="input-group-row">
+                                <label for="spell-power-1">Spell Power</label>
+                                <input type="number" id="spell-power-1" value="1000" class="small-input" title="Your spell power for this profile.">
+                                <span class="plus-symbol">+</span>
+                                <span id="metamagic-spell-power-bonus-1" class="read-only-bonus">0</span>
+                            </div>
+                            <div class="input-group-row">
+                                <label for="spell-crit-chance-1">Crit Chance %</label>
+                                <input type="number" id="spell-crit-chance-1" value="75" class="small-input" title="Your chance to critically hit with this profile.">
+                            </div>
+                            <div class="input-group-row">
+                                <label for="spell-crit-damage-1">Crit Dmg Bonus %</label>
+                                <input type="number" id="spell-crit-damage-1" value="205" class="small-input" title="Your additional spell critical damage bonus. Base critical damage is +100% (x2 total).">
+                                <span class="plus-symbol">+</span>
+                                <span id="boost-crit-damage-bonus-1" class="read-only-bonus">0</span>
+                            </div>
+                            <button class="remove-row-btn hidden" title="Remove this profile">&times;</button>
+                        </div>
                     </div>
-                    <div class="input-group-row">
-                        <label for="spell-crit-chance">Crit Chance %</label>
-                        <input type="number" id="spell-crit-chance" value="20" class="small-input"
-                            title="Your chance to critically hit with the spell.">
-                    </div>
-                    <div class="input-group-row">
-                        <label for="spell-crit-damage">Crit Damage %</label>
-                        <input type="number" id="spell-crit-damage" value="100" class="small-input"
-                            title="Your additional spell critical damage (e.g., 100 for a total of x3 multiplier).">
-                    </div>
-                </div>
-                <div class="stats-group">
-                    <label class="section-headline">Target Defenses</label>
-
+                    <button id="add-spell-power-source-btn" class="small-btn" style="width: auto; margin-top: 0.5rem;">Add Spell Power Source</button>
                 </div>
                 <div class="stats-group">
                     <label class="section-headline">Metamagic</label>
                     <div class="input-group-row">
-                        <input type="checkbox" id="metamagic-empower"><label for="metamagic-empower"
+                        <input type="checkbox" id="metamagic-empower" checked><label for="metamagic-empower"
                             class="checkbox-label">Empower</label>
-                        <input type="checkbox" id="metamagic-maximize"><label for="metamagic-maximize"
+                        <input type="checkbox" id="metamagic-maximize" checked><label for="metamagic-maximize"
                             class="checkbox-label">Maximize</label>
-                        <input type="checkbox" id="metamagic-intensify"><label for="metamagic-intensify"
+                        <input type="checkbox" id="metamagic-intensify" checked><label for="metamagic-intensify"
                             class="checkbox-label">Intensify</label>
+                    </div>
+                </div>
+                <div class="stats-group">
+                    <label class="section-headline">Boosts</label>
+                    <div class="input-group-row">
+                        <input type="checkbox" id="boost-wellspring"><label for="boost-wellspring"
+                            class="checkbox-label">Wellspring of Power</label>
                     </div>
                 </div>
                 <button id="calculate-spell-btn">Calculate Spell Damage</button>

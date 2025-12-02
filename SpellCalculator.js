@@ -34,18 +34,15 @@ class SpellCalculator {
         // Input elements
         this.spellDamageRowsContainer = get('spell-damage-rows-container');
         this.addSpellDamageRowBtn = get('add-spell-damage-row-btn');
-
-        this.spellPowerInput = get('spell-power');
-        this.spellCritChanceInput = get('spell-crit-chance');
-        this.spellCritDamageInput = get('spell-crit-damage');
-
+        this.addSpellPowerSourceBtn = get('add-spell-power-source-btn');
         this.empowerCheckbox = get('metamagic-empower');
         this.maximizeCheckbox = get('metamagic-maximize');
         this.intensifyCheckbox = get('metamagic-intensify');
+        this.wellspringCheckbox = get('boost-wellspring');
         this.calculateBtn = get('calculate-spell-btn');
 
         // Output elements
-        this.metamagicSpellPowerBonusSpan = get('metamagic-spell-power-bonus');
+        this.spellPowerSourcesContainer = get('spell-power-sources-container');
         this.avgSpellDamageSpan = get('avg-spell-damage');
         this.avgSpellCritDamageSpan = get('avg-spell-crit-damage');
         this.totalAvgSpellDamageSpan = get('total-avg-spell-damage');
@@ -69,9 +66,11 @@ class SpellCalculator {
             this.empowerCheckbox.addEventListener('change', recordChange);
             this.maximizeCheckbox.addEventListener('change', recordChange);
             this.intensifyCheckbox.addEventListener('change', recordChange);
+            this.wellspringCheckbox.addEventListener('change', recordChange);
 
             // Add listener for adding a new spell damage row
             this.addSpellDamageRowBtn.addEventListener('click', (e) => this.addSpellDamageRow(e));
+            this.addSpellPowerSourceBtn.addEventListener('click', () => this.addSpellPowerSource());
 
 
 
@@ -79,15 +78,33 @@ class SpellCalculator {
             this.spellDamageRowsContainer.addEventListener('click', (e) => {
                 if (e.target && e.target.classList.contains('remove-row-btn')) {
                     e.preventDefault();
-                    e.target.closest('.input-group-row').remove();
-                    this.calculateSpellDamage(); // Recalculate after removing a row
+                    const mainRowToRemove = e.target.closest('.spell-damage-source-row');
+                    if (mainRowToRemove) {
+                        // Remove all subsequent additional-scaling-row siblings
+                        let nextSibling = mainRowToRemove.nextElementSibling;
+                        while (nextSibling && nextSibling.classList.contains('additional-scaling-row')) {
+                            const toRemove = nextSibling;
+                            nextSibling = nextSibling.nextElementSibling;
+                            toRemove.remove();
+                        }
+                        mainRowToRemove.remove(); // Remove the main row itself
+                    }
+                    this.calculateSpellDamage();
                     this.manager.saveState();
                 } else if (e.target && e.target.classList.contains('add-scaling-input-btn')) {
                     e.preventDefault();
                     this._addAdditionalScalingInput(e.target.closest('.input-group-row'));
-                } else if (e.target && e.target.classList.contains('remove-scaling-input-btn')) {
+                }
+            });
+
+            // Use event delegation for remove buttons on spell power profiles
+            this.spellPowerSourcesContainer.addEventListener('click', (e) => {
+                if (e.target && e.target.classList.contains('remove-row-btn')) {
                     e.preventDefault();
-                    this._removeAdditionalScalingInput(e.target.closest('.input-group-row'));
+                    const profileElement = e.target.closest('.spell-power-profile');
+                    if (profileElement) {
+                        this.removeSpellPowerSource(profileElement);
+                    }
                 }
             });
         }
@@ -150,45 +167,76 @@ class SpellCalculator {
         if (!rowIdMatch) return;
         const spellRowId = rowIdMatch[1];
 
-        const additionalScalingInputs = rowElement.querySelectorAll('input[id^="additional-scaling-"]');
-        if (additionalScalingInputs.length >= 5) { // Limit to 5
-            rowElement.querySelector('.add-scaling-input-btn').classList.add('hidden');
-            return;
+        // Find existing additional scaling rows that are siblings to the main row
+        let existingScalingRows = 0;
+        let nextSibling = rowElement.nextElementSibling;
+        while (nextSibling && nextSibling.classList.contains('additional-scaling-row')) {
+            existingScalingRows++;
+            nextSibling = nextSibling.nextElementSibling;
         }
 
-        const addScalingButton = rowElement.querySelector('.add-scaling-input-btn');
-        const removeScalingButton = rowElement.querySelector('.remove-scaling-input-btn');
+        const newScalingIndex = existingScalingRows; // The index for the new row (0-based)
 
         // Create label and input
-        const newAdditionalScalingId = additionalScalingInputs.length + 1;
-        const label = document.createElement('label');
-        label.setAttribute('for', `additional-scaling-${spellRowId}-${newAdditionalScalingId}${this.idSuffix}`);
-        label.classList.add('short-label');
-        label.textContent = `Add Scale ${newAdditionalScalingId}`;
+        const spellPowerOptions = this._getSpellPowerProfiles().map(p => `<option value="${p.id}">SP ${p.id}</option>`).join('');
+        const newAdditionalScalingId = existingScalingRows + 1; // A unique ID for the new elements
+        const wrapper = document.createElement('div');
+        wrapper.className = 'input-group-row additional-scaling-row';
+        wrapper.innerHTML = `
+            <label for="additional-scaling-base-${spellRowId}-${newAdditionalScalingId}${this.idSuffix}" class="short-label">SP ${newScalingIndex + 2} Base</label>
+            <input type="text" id="additional-scaling-base-${spellRowId}-${newAdditionalScalingId}${this.idSuffix}" value="0" class="small-input adaptive-text-input" title="Base damage for this component (does not scale with CL)">
+            <span class="plus-symbol">+</span>
+            <label for="additional-scaling-cl-${spellRowId}-${newAdditionalScalingId}${this.idSuffix}" class="short-label">per CL</label>
+            <input type="text" id="additional-scaling-cl-${spellRowId}-${newAdditionalScalingId}${this.idSuffix}" value="0" class="small-input adaptive-text-input" title="Bonus damage per caster level for this component">
+            <select id="additional-scaling-sp-select-${spellRowId}-${newAdditionalScalingId}${this.idSuffix}" class="small-input" title="Select Spell Power source for this component">${spellPowerOptions}</select>            
+            <button class="remove-scaling-input-btn small-btn" title="Remove this scaling input">&times;</button>
+        `;
 
-        const input = document.createElement('input');
-        input.setAttribute('type', 'text');
-        input.setAttribute('id', `additional-scaling-${spellRowId}-${newAdditionalScalingId}${this.idSuffix}`);
-        input.setAttribute('value', '0');
-        input.classList.add('small-input', 'adaptive-text-input');
-        input.setAttribute('title', 'Additional flat damage bonus applied after Spell Power scaling');
+        // Insert the new row after the last existing scaling row, or after the main row if none exist.
+        let insertionPoint = rowElement;
+        if (existingScalingRows > 0) {
+            insertionPoint = rowElement.nextElementSibling;
+            for (let i = 1; i < existingScalingRows; i++) {
+                insertionPoint = insertionPoint.nextElementSibling;
+            }
+        }
+        insertionPoint.insertAdjacentElement('afterend', wrapper);
 
-        // Insert elements before the addScalingButton
-        rowElement.insertBefore(label, addScalingButton);
-        rowElement.insertBefore(input, addScalingButton);
-
-        // Show the remove button
-        removeScalingButton.classList.remove('hidden');
+        // Set the default selection for the new dropdown
+        const spSelect = wrapper.querySelector('select');
+        if (spSelect) {
+            // Default to the corresponding SP source if it exists, otherwise the last one.
+            const targetProfileId = newScalingIndex + 2;
+            const profiles = this._getSpellPowerProfiles();
+            if (profiles.some(p => p.id === targetProfileId)) {
+                spSelect.value = targetProfileId;
+            } else if (profiles.length > 0) {
+                spSelect.value = profiles[profiles.length - 1].id;
+            }
+        }
 
         // If 5 inputs are present, hide the add button
-        if (additionalScalingInputs.length + 1 >= 5) {
-            addScalingButton.classList.add('hidden');
+        if (existingScalingRows + 1 >= 5) {
+            rowElement.querySelector('.add-scaling-input-btn').classList.add('hidden');
         }
+
+        // Add event listener for the new remove button
+        wrapper.querySelector('.remove-scaling-input-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            wrapper.remove();
+            // After removing, ensure the main row's add button is visible again
+            const addBtn = rowElement.querySelector('.add-scaling-input-btn');
+            if (addBtn) {
+                addBtn.classList.remove('hidden');
+            }
+
+            this.calculateSpellDamage();
+            this.manager.saveState();
+        });
 
         // Recalculate damage and save state
         this.calculateSpellDamage();
         this.manager.saveState();
-        this._resizeInput(input); // Resize the new input
     }
 
     _removeAdditionalScalingInput(rowElement) {
@@ -237,7 +285,7 @@ class SpellCalculator {
         const newRowId = maxRowId + 1;
 
         const newRow = document.createElement('div');
-        newRow.className = 'input-group-row';
+        newRow.className = 'input-group-row spell-damage-source-row';
         newRow.innerHTML = `
             <input type="text" id="spell-name-${newRowId}${this.idSuffix}" value="Source ${newRowId}" title="Name of the spell component" placeholder="Spell Name" class="adaptive-text-input">
             <label for="spell-damage-${newRowId}${this.idSuffix}">Base Damage</label>
@@ -247,8 +295,9 @@ class SpellCalculator {
             <input type="text" id="spell-cl-scaling-${newRowId}${this.idSuffix}" value="0" class="small-input adaptive-text-input" title="Bonus damage dice per caster level (e.g., 1d6 per CL)">
             <label for="caster-level-${newRowId}${this.idSuffix}" class="short-label">CL</label>
             <input type="number" id="caster-level-${newRowId}${this.idSuffix}" value="20" class="small-input" title="Caster Level for this damage component">
+            <label for="spell-hit-count-${newRowId}${this.idSuffix}" class="short-label">Hits</label>
+            <input type="number" id="spell-hit-count-${newRowId}${this.idSuffix}" value="1" min="1" class="small-input" title="Number of times this spell component hits">
             <button class="add-scaling-input-btn small-btn" title="Add additional scaling input">+</button>
-            <button class="remove-scaling-input-btn small-btn hidden" title="Remove last additional scaling input">-</button>
             <button class="remove-row-btn" title="Remove this damage source">&times;</button>
         `;
         this.spellDamageRowsContainer.appendChild(newRow);
@@ -256,43 +305,75 @@ class SpellCalculator {
     }
 
     _getInputs() {
+        const spellPowerProfiles = this._getSpellPowerProfiles();
         const spellDamageSources = [];
-        this.spellDamageRowsContainer.querySelectorAll('.input-group-row').forEach((row, i) => {
+        
+        // Find only the main spell damage rows, not the additional scaling rows
+        this.spellDamageRowsContainer.querySelectorAll('.input-group-row:not(.additional-scaling-row)').forEach((row, i) => {
             const spellNameInput = row.querySelector('input[id^="spell-name-"]');
             const baseDmgInput = row.querySelector('input[id^="spell-damage-"]');
             const clScalingInput = row.querySelector('input[id^="spell-cl-scaling-"]');
             const casterLevelInput = row.querySelector('input[id^="caster-level-"]');
+            const hitCountInput = row.querySelector('input[id^="spell-hit-count-"]');
 
-            // Collect all additional scaling inputs for this row
-            let totalAdditionalScaling = 0;
-            row.querySelectorAll('input[id^="additional-scaling-"]').forEach(input => {
-                totalAdditionalScaling += this.parseDiceNotation(input.value);
-            });
+            const additionalScalings = [];
+            let nextSibling = row.nextElementSibling;
+            while (nextSibling && nextSibling.classList.contains('additional-scaling-row')) {
+                const baseInput = nextSibling.querySelector('input[id^="additional-scaling-base-"]');
+                const clInput = nextSibling.querySelector('input[id^="additional-scaling-cl-"]');
+                const spSelect = nextSibling.querySelector('select[id^="additional-scaling-sp-select-"]');
 
-            if (spellNameInput && baseDmgInput && clScalingInput && casterLevelInput) {
+                if (baseInput && clInput && spSelect) {
+                    additionalScalings.push({
+                        base: this.parseDiceNotation(baseInput.value),
+                        clScaled: this.parseDiceNotation(clInput.value),
+                        profileId: parseInt(spSelect.value, 10) || 1
+                    });
+                }
+                nextSibling = nextSibling.nextElementSibling;
+            }
+
+            if (spellNameInput && baseDmgInput && clScalingInput && casterLevelInput && hitCountInput) {
                 spellDamageSources.push({
                     name: spellNameInput.value || `Source ${i + 1}`,
                     base: this.parseDiceNotation(baseDmgInput.value),
                     clScaled: this.parseDiceNotation(clScalingInput.value),
-                    additionalScaling: totalAdditionalScaling, // Store the sum
-                    casterLevel: parseInt(casterLevelInput.value) || 0
+                    casterLevel: parseInt(casterLevelInput.value) || 0,
+                    hitCount: parseInt(hitCountInput.value) || 1,
+                    additionalScalings: additionalScalings
                 });
             }
         });
 
         const inputs = {
             spellDamageSources: spellDamageSources,
-            spellPower: parseInt(this.spellPowerInput.value) || 0,
-            critChance: (parseFloat(this.spellCritChanceInput.value) || 0) / 100,
-            critDamage: (parseFloat(this.spellCritDamageInput.value) || 0) / 100,
+            spellPowerProfiles: spellPowerProfiles,
 
             isEmpowered: this.empowerCheckbox.checked,
             isMaximized: this.maximizeCheckbox.checked,
             isIntensified: this.intensifyCheckbox.checked,
+            isWellspring: this.wellspringCheckbox.checked,
         };
         return inputs;
     }
 
+    _getSpellPowerProfiles() {
+        const profiles = [];
+        this.spellPowerSourcesContainer.querySelectorAll('.spell-power-profile').forEach(profileEl => {
+            const profileId = parseInt(profileEl.dataset.profileId, 10);
+            const spellPower = parseInt(profileEl.querySelector(`#spell-power-${profileId}${this.idSuffix}`).value, 10) || 0;
+            const critChance = (parseFloat(profileEl.querySelector(`#spell-crit-chance-${profileId}${this.idSuffix}`).value, 10) || 0) / 100;
+            const critDamage = (parseFloat(profileEl.querySelector(`#spell-crit-damage-${profileId}${this.idSuffix}`).value, 10) || 0) / 100;
+
+            profiles.push({
+                id: profileId,
+                spellPower: spellPower,
+                critChance: critChance,
+                critDamage: critDamage
+            });
+        });
+        return profiles;
+    }
     calculateSpellDamage() {
         let totalBaseDamage = 0;
         const individualSpellDamages = []; // To store results for each spell
@@ -309,25 +390,78 @@ class SpellCalculator {
             metamagicSpellPower += 150;
         }
 
-        this.metamagicSpellPowerBonusSpan.textContent = metamagicSpellPower;
-        const totalSpellPower = inputs.spellPower + metamagicSpellPower;
-        const spellPowerMultiplier = 1 + (totalSpellPower / 100);
-        const critMultiplier = 2 + inputs.critDamage;
+        const wellspringSpellPowerBonus = inputs.isWellspring ? 150 : 0;
+        const wellspringCritDamageBonus = inputs.isWellspring ? 0.20 : 0;
+
+        const totalSpellPowerBonus = metamagicSpellPower + wellspringSpellPowerBonus;
+ 
+        // Update bonus displays for each spell power profile
+        this.spellPowerSourcesContainer.querySelectorAll('.spell-power-profile').forEach(profileEl => {
+            const profileId = profileEl.dataset.profileId;
+            const spellPowerBonusSpan = profileEl.querySelector(`#metamagic-spell-power-bonus-${profileId}${this.idSuffix}`);
+            const critDamageBonusSpan = profileEl.querySelector(`#boost-crit-damage-bonus-${profileId}${this.idSuffix}`);
+            if (spellPowerBonusSpan) spellPowerBonusSpan.textContent = totalSpellPowerBonus;
+            if (critDamageBonusSpan) critDamageBonusSpan.textContent = `${wellspringCritDamageBonus * 100}%`;
+        });
 
         inputs.spellDamageSources.forEach(source => {
-            const spellBaseDamage = source.base + (source.clScaled * source.casterLevel);
-            const damageBeforeSpellPower = spellBaseDamage + source.additionalScaling; // Add additional scaling here
-            const averageHit = damageBeforeSpellPower * spellPowerMultiplier;
-            const averageCrit = averageHit * critMultiplier;
-            const totalAverage = (averageHit * (1 - inputs.critChance)) + (averageCrit * inputs.critChance);
+            let sourceTotalAverage = 0;
+            const components = [];
+
+            // --- Calculate Base + CL damage ---
+            const baseDamageComponent = source.base + (source.clScaled * source.casterLevel);
+
+            // Base damage always uses the first spell power source (SP 1)
+            const baseProfile = inputs.spellPowerProfiles.find(p => p.id === 1) || inputs.spellPowerProfiles[0];
+            if (baseProfile) {
+                const totalSpellPower = baseProfile.spellPower + totalSpellPowerBonus;
+                const spellPowerMultiplier = 1 + (totalSpellPower / 100);
+                const critMultiplier = 2 + baseProfile.critDamage + wellspringCritDamageBonus;
+
+                const averageHit = baseDamageComponent * spellPowerMultiplier;
+                const averageCrit = averageHit * critMultiplier;
+                const totalAverage = (averageHit * (1 - baseProfile.critChance)) + (averageCrit * baseProfile.critChance);
+
+                sourceTotalAverage += totalAverage; // Keep track of the running total for the whole source
+                components.push({
+                    name: 'Base + CL',
+                    averageHit: averageHit,
+                    averageCrit: averageCrit
+                });
+            }
+
+            // --- Calculate Additional Scaling damage ---
+            source.additionalScalings.forEach((scaling, index) => {
+                const profile = inputs.spellPowerProfiles.find(p => p.id === scaling.profileId) || inputs.spellPowerProfiles[0];
+                if (profile) {
+                    const totalSpellPower = profile.spellPower + totalSpellPowerBonus;
+                    const spellPowerMultiplier = 1 + (totalSpellPower / 100);
+                    const critMultiplier = 2 + profile.critDamage + wellspringCritDamageBonus;
+
+                    // Combine base and CL-scaled damage for this component
+                    const damageComponent = scaling.base + (scaling.clScaled * source.casterLevel);
+                    const averageHit = damageComponent * spellPowerMultiplier;
+                    const averageCrit = averageHit * critMultiplier;
+                    const totalAverage = (averageHit * (1 - profile.critChance)) + (averageCrit * profile.critChance);
+
+                    sourceTotalAverage += totalAverage; // Add to the running total
+                    components.push({
+                        name: `SP ${index + 2}`,
+                        averageHit: averageHit,
+                        averageCrit: averageCrit
+                    });
+                }
+            });
+
+            // Multiply the total average damage for this source by its hit count
+            sourceTotalAverage *= source.hitCount;
 
             individualSpellDamages.push({
                 name: source.name,
-                averageHit: averageHit,
-                averageCrit: averageCrit,
-                totalAverage: totalAverage
+                components: components,
+                totalAverage: sourceTotalAverage
             });
-            totalBaseDamage += totalAverage; // Summing up the individual total averages for the grand total
+            totalBaseDamage += sourceTotalAverage;
         });
 
         // This is the aggregated average BEFORE MRR for all spells combined
@@ -343,6 +477,7 @@ class SpellCalculator {
         this.finalSpellDamageSpan.textContent = totalBaseDamage.toFixed(2);
 
         this._updateSummaryUI(); // Call the new UI update method
+        this.updateSpellPowerSelectors();
     }
 
     _updateSummaryUI() {
@@ -352,9 +487,109 @@ class SpellCalculator {
         individualSpellDamageSummary.innerHTML = '<h3>Individual Spell Damage</h3>'; // Clear previous results
 
         this.individualSpellDamages.forEach(spell => {
-            const p = document.createElement('p');
-            p.innerHTML = `<strong>${spell.name}:</strong> Avg Dmg (pre-crit): ${spell.averageHit.toFixed(2)}, Avg Crit: ${spell.averageCrit.toFixed(2)}`;
-            individualSpellDamageSummary.appendChild(p);
+            const spellContainer = document.createElement('div');
+            spellContainer.style.marginBottom = '0.5rem';
+            spellContainer.innerHTML = `<strong>${spell.name} (Total Avg: ${spell.totalAverage.toFixed(2)})</strong>`;
+
+            spell.components.forEach(component => {
+                const p = document.createElement('p');
+                p.style.marginLeft = '1rem';
+                p.innerHTML = `<em>${component.name}:</em> Avg Hit: ${component.averageHit.toFixed(2)}, Avg Crit: ${component.averageCrit.toFixed(2)}`;
+                spellContainer.appendChild(p);
+            });
+            individualSpellDamageSummary.appendChild(spellContainer);
+        });
+    }
+
+    addSpellPowerSource(state = null) {
+        const existingProfiles = this.spellPowerSourcesContainer.querySelectorAll('.spell-power-profile');
+        let newProfileId;
+
+        if (state && state.id) {
+            newProfileId = state.id;
+        } else {
+            newProfileId = existingProfiles.length > 0 ? Math.max(...Array.from(existingProfiles).map(p => parseInt(p.dataset.profileId, 10))) + 1 : 1;
+        }
+
+        const newProfile = document.createElement('div');
+        newProfile.className = 'stats-group spell-power-profile';
+        newProfile.dataset.profileId = newProfileId;
+
+        // Use state values if provided, otherwise use defaults
+        const typeValue = state?.type || '';
+        const powerValue = state?.spellPower || '500';
+        const chanceValue = state?.critChance || '20';
+        const damageValue = state?.critDamage || '100';
+
+        newProfile.innerHTML = `
+            <div class="profile-header">
+                <label class="section-headline">Spell Power & Criticals ${newProfileId}</label>
+                <input type="text" id="spell-power-type-${newProfileId}${this.idSuffix}" class="adaptive-text-input"
+                    placeholder="Element Type" title="e.g., Fire, Acid, etc." value="${typeValue}">
+            </div>
+            <div class="input-group-row">
+                <label for="spell-power-${newProfileId}${this.idSuffix}">Spell Power</label>
+                <input type="number" id="spell-power-${newProfileId}${this.idSuffix}" value="${powerValue}" class="small-input" title="Your spell power for this profile.">
+                <span class="plus-symbol">+</span>
+                <span id="metamagic-spell-power-bonus-${newProfileId}${this.idSuffix}" class="read-only-bonus">0</span>
+            </div>
+            <div class="input-group-row">
+                <label for="spell-crit-chance-${newProfileId}${this.idSuffix}">Crit Chance %</label>
+                <input type="number" id="spell-crit-chance-${newProfileId}${this.idSuffix}" value="${chanceValue}" class="small-input" title="Your chance to critically hit with this profile.">
+            </div>
+            <div class="input-group-row">
+                <label for="spell-crit-damage-${newProfileId}${this.idSuffix}">Crit Dmg Bonus %</label>
+                <input type="number" id="spell-crit-damage-${newProfileId}${this.idSuffix}" value="${damageValue}" class="small-input" title="Your additional spell critical damage bonus. Base critical damage is +100% (x2 total).">
+                <span class="plus-symbol">+</span>
+                <span id="boost-crit-damage-bonus-${newProfileId}${this.idSuffix}" class="read-only-bonus">0</span>
+            </div>
+            <button class="remove-row-btn" title="Remove this profile">&times;</button>
+        `;
+
+        this.spellPowerSourcesContainer.appendChild(newProfile);
+
+        // Only trigger recalculation and save if we are NOT in a bulk-loading state (i.e., state is null)
+        if (state === null) {
+            this.updateSpellPowerSelectors();
+            this.calculateSpellDamage();
+            this.manager.saveState();
+        }
+    }
+
+    removeSpellPowerSource(profileElement) {
+        if (this.spellPowerSourcesContainer.children.length <= 1) {
+            alert("You cannot remove the last spell power source.");
+            return;
+        }
+        profileElement.remove();
+        this.updateSpellPowerSelectors();
+        this.calculateSpellDamage();
+        this.manager.saveState();
+    }
+
+    updateSpellPowerSelectors() {
+        const profiles = this._getSpellPowerProfiles();
+        const profileOptions = profiles.map(p => `<option value="${p.id}">SP ${p.id}</option>`).join('');
+
+        document.querySelectorAll(`#calculator-set-${this.setId} select[id^="additional-scaling-sp-select-"]`).forEach(select => {
+            const currentValue = select.value;
+            select.innerHTML = profileOptions;
+
+            // Try to preserve the selected value if it still exists
+            if (profiles.some(p => p.id.toString() === currentValue)) {
+                select.value = currentValue;
+            } else {
+                // If the selected profile was deleted, default to the first available one
+                if (profiles.length > 0) {
+                    select.value = profiles[0].id;
+                }
+            }
+        });
+
+        // Show/hide remove buttons
+        const allProfiles = this.spellPowerSourcesContainer.querySelectorAll('.spell-power-profile');
+        allProfiles.forEach(p => {
+            p.querySelector('.remove-row-btn').classList.toggle('hidden', allProfiles.length <= 1);
         });
     }
 
@@ -377,23 +612,57 @@ class SpellCalculator {
             const baseDmgInput = row.querySelector('input[id^="spell-damage-"]');
             const clScalingInput = row.querySelector('input[id^="spell-cl-scaling-"]');
             const casterLevelInput = row.querySelector('input[id^="caster-level-"]');
+            const hitCountInput = row.querySelector('input[id^="spell-hit-count-"]');
 
-            const additionalScalings = [];
-            row.querySelectorAll('input[id^="additional-scaling-"]').forEach(input => {
-                additionalScalings.push(input.value);
-            });
+            const additionalScalingsState = [];
+            let nextSibling = row.nextElementSibling;
+            while (nextSibling && nextSibling.classList.contains('additional-scaling-row')) {
+                const baseInput = nextSibling.querySelector('input[id^="additional-scaling-base-"]');
+                const clInput = nextSibling.querySelector('input[id^="additional-scaling-cl-"]');
+                const spSelect = nextSibling.querySelector('select[id^="additional-scaling-sp-select-"]');
+                if (baseInput && clInput && spSelect) {
+                    additionalScalingsState.push({
+                        base: baseInput.value,
+                        clScaled: clInput.value,
+                        profileId: spSelect.value
+                    });
+                }
+                nextSibling = nextSibling.nextElementSibling;
+            }
 
-            if (spellNameInput && baseDmgInput && clScalingInput && casterLevelInput) {
+            if (spellNameInput && baseDmgInput && clScalingInput && casterLevelInput && hitCountInput) {
                 spellDamageSourcesState.push({
                     name: spellNameInput.value,
                     base: baseDmgInput.value,
                     clScaled: clScalingInput.value,
-                    additionalScalings: additionalScalings, // Store as an array
-                    casterLevel: casterLevelInput.value
+                    additionalScalings: additionalScalingsState,
+                    casterLevel: casterLevelInput.value,
+                    hitCount: hitCountInput.value
                 });
             }
         });
         state.spellDamageSources = spellDamageSourcesState;
+
+        // Store spell power profiles
+        const spellPowerProfilesState = [];
+        this.spellPowerSourcesContainer.querySelectorAll('.spell-power-profile').forEach(profileEl => {
+            const profileId = parseInt(profileEl.dataset.profileId, 10);
+            const spellPowerInput = profileEl.querySelector(`#spell-power-${profileId}${this.idSuffix}`);
+            const critChanceInput = profileEl.querySelector(`#spell-crit-chance-${profileId}${this.idSuffix}`);
+            const critDamageInput = profileEl.querySelector(`#spell-crit-damage-${profileId}${this.idSuffix}`);
+            const typeInput = profileEl.querySelector(`#spell-power-type-${profileId}${this.idSuffix}`);
+
+            if (spellPowerInput && critChanceInput && critDamageInput && typeInput) {
+                spellPowerProfilesState.push({
+                    id: profileId,
+                    spellPower: spellPowerInput.value,
+                    critChance: critChanceInput.value,
+                    critDamage: critDamageInput.value,
+                    type: typeInput.value
+                });
+            }
+        });
+        state.spellPowerProfiles = spellPowerProfilesState;
 
         return state;
     }
@@ -404,8 +673,8 @@ class SpellCalculator {
         const allInputs = document.querySelectorAll(`#calculator-set-${this.setId} input, #calculator-set-${this.setId} select`);
         allInputs.forEach(input => {
             const key = input.id.replace(`-set${this.setId}`, '');
-            // Skip dynamic spell damage source inputs here, as they are handled below
-            if (key.startsWith('spell-name-') || key.startsWith('spell-damage-') || key.startsWith('spell-cl-scaling-') || key.startsWith('additional-scaling-') || key.startsWith('caster-level-')) {
+            // Skip dynamic inputs here, as they are handled below
+            if (key.startsWith('spell-name-') || key.startsWith('spell-damage-') || key.startsWith('spell-cl-scaling-') || key.startsWith('additional-scaling-') || key.startsWith('caster-level-') || key.startsWith('spell-hit-count-') || key.startsWith('spell-power-type-') || key.startsWith('spell-power-') || key.startsWith('spell-crit-chance-') || key.startsWith('spell-crit-damage-') || key.startsWith('additional-scaling-sp-select-') || key.startsWith('boost-')) {
                 return;
             }
 
@@ -418,9 +687,23 @@ class SpellCalculator {
             }
         });
 
+        // Handle spell power profiles
+        const powerProfilesContainer = this.spellPowerSourcesContainer;
+        powerProfilesContainer.innerHTML = ''; // Clear existing profiles
+
+        if (state.spellPowerProfiles && state.spellPowerProfiles.length > 0) {
+            // Recreate each profile directly from its state
+            state.spellPowerProfiles.forEach(profileState => {
+                this.addSpellPowerSource(profileState);
+            });
+        } else {
+            // If no profiles in state, ensure one default one exists
+            this.addSpellPowerSource(null);
+        }
+
         // Handle spell damage rows
         // Clear all existing dynamic spell damage rows
-        let existingRows = this.spellDamageRowsContainer.querySelectorAll('.input-group-row');
+        let existingRows = this.spellDamageRowsContainer.querySelectorAll('.input-group-row, .additional-scaling-row');
         existingRows.forEach(row => row.remove());
 
         if (state.spellDamageSources && state.spellDamageSources.length > 0) {
@@ -437,39 +720,33 @@ class SpellCalculator {
                     const baseDmgInput = newRow.querySelector('input[id^="spell-damage-"]');
                     const clScalingInput = newRow.querySelector('input[id^="spell-cl-scaling-"]');
                     const casterLevelInput = newRow.querySelector('input[id^="caster-level-"]');
+                    const hitCountInput = newRow.querySelector('input[id^="spell-hit-count-"]');
 
                     if (spellNameInput) spellNameInput.value = source.name;
                     if (baseDmgInput) baseDmgInput.value = source.base;
                     if (clScalingInput) clScalingInput.value = source.clScaled;
                     if (casterLevelInput) casterLevelInput.value = source.casterLevel;
+                    if (hitCountInput) hitCountInput.value = source.hitCount;
+
 
                     // If additional scalings were saved, add the inputs and set their values
                     if (source.additionalScalings && source.additionalScalings.length > 0) {
-                        source.additionalScalings.forEach((scalingValue, scalingIndex) => {
-                            if (scalingValue) {
+                        source.additionalScalings.forEach((scalingState) => {
+                            if (scalingState) {
                                 this._addAdditionalScalingInput(newRow); // Add a new input field
-                                const allScalingInputs = newRow.querySelectorAll('input[id^="additional-scaling-"]');
-                                const newScalingInput = allScalingInputs[scalingIndex]; // Get the specific input we just added
-                                if (newScalingInput) newScalingInput.value = scalingValue;
+                                const newScalingRow = newRow.nextElementSibling; // This is fragile, assumes it's added right after
+                                const lastScalingRow = Array.from(this.spellDamageRowsContainer.querySelectorAll('.additional-scaling-row')).pop();
+
+                                if (lastScalingRow) {
+                                    const newBaseInput = lastScalingRow.querySelector('input[id^="additional-scaling-base-"]');
+                                    const newClInput = lastScalingRow.querySelector('input[id^="additional-scaling-cl-"]');
+                                    const newSpSelect = lastScalingRow.querySelector('select[id^="additional-scaling-sp-select-"]');
+                                    if (newBaseInput) newBaseInput.value = scalingState.base;
+                                    if (newClInput) newClInput.value = scalingState.clScaled;
+                                    if (newSpSelect) newSpSelect.value = scalingState.profileId;
+                                }
                             }
                         });
-                    }
-
-                    // Adjust button visibility after all additional scalings are loaded
-                    const currentAdditionalInputs = newRow.querySelectorAll('input[id^="additional-scaling-"]');
-                    const addScalingButton = newRow.querySelector('.add-scaling-input-btn');
-                    const removeScalingButton = newRow.querySelector('.remove-scaling-input-btn');
-
-                    if (currentAdditionalInputs.length > 0) {
-                        removeScalingButton.classList.remove('hidden');
-                    } else {
-                        removeScalingButton.classList.add('hidden');
-                    }
-
-                    if (currentAdditionalInputs.length >= 5) {
-                        addScalingButton.classList.add('hidden');
-                    } else {
-                        addScalingButton.classList.remove('hidden');
                     }
                 }
             });
@@ -480,6 +757,7 @@ class SpellCalculator {
                 this.addSpellDamageRow(new Event('dummy'));
             }
         }
+        this.updateSpellPowerSelectors();
         this.resizeAllAdaptiveInputs();
         this.calculateSpellDamage();
     }

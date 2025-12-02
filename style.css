@@ -326,6 +326,12 @@ input.adaptive-text-input {
     /* JS will set the width property directly */
 }
 
+/* Specific override for spell power inputs to allow for larger numbers */
+input[id^="spell-power"] {
+    width: 70px !important; /* Override .small-input to fit 4+ digit numbers */
+}
+
+
 /* Fallback/default for non-adaptive text inputs in rows */
 .input-group-row input[type="text"]:not(.adaptive-text-input) {
     min-width: 50px;
@@ -728,6 +734,34 @@ input:checked+.slider:before /* Changes the icon on the theme switch (e.g., from
     color: var(--table-header-text);
 }
 
+.spell-power-profiles-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem; /* Add space between multiple profile groups */
+}
+
+/* Specific styles for additional scaling rows within spell damage sources */
+.additional-scaling-row {
+    background-color: var(--stats-group-bg); /* Match parent group background */
+    /*border-top: 1px dashed var(--border-color); /* Visually separate from main row */
+    padding-top: 0.5rem;
+    margin-top: 0.5rem;
+    padding-bottom: 0.2rem; /* Reduce bottom padding */
+    border-radius: 0 0 8px 8px; /* Round bottom corners if it's the last one */
+}
+
+/* Styles for the header of a spell power profile */
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem; /* Match the original margin of the headline */
+}
+
+.profile-header .section-headline {
+    margin-bottom: 0; /* Remove margin from headline as it's now on the container */
+}
+
 /* --- Responsive Design --- */
 @media (max-width: 1280px) /* These settings apply ONLY when the screen is smaller than 1280 pixels wide (e.g., on tablets or smaller laptops). */ {
     .main-grid /* Changes the layout of the main content area ONLY when the screen is smaller than 1280 pixels wide, stacking items instead of placing them side-by-side. */ {
@@ -744,6 +778,7 @@ input:checked+.slider:before /* Changes the icon on the theme switch (e.g., from
         border-top: 2px solid var(--border-color);
     }
 }
+
 
 @media (max-width: 768px) /* These settings apply ONLY when the screen is smaller than 768 pixels wide (e.g., on mobile phones). */ {
     .page-wrapper /* Adjusts the spacing around the entire page content ONLY when the screen is smaller than 768 pixels wide. */ {

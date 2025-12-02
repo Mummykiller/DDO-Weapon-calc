@@ -995,6 +995,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // After setting state, recalculate to update results
             this.calculateDdoDamage();
+
+            // After all values are set, resize the inputs to fit the content
+            this.resizeAllAdaptiveInputs();
         }
 
         applyValueChange(inputId, value) {
