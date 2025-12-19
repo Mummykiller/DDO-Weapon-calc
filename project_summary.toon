@@ -1,0 +1,35 @@
+[Title]: DDO Damage Calculator Project Summary
+[Date]: 2025-12-03
+
+## Project Overview
+
+This project is a web-based "Dungeons and Dragons Online" (DDO) damage calculator. It provides a user-friendly interface for players to input their character's stats and calculate the average damage output for different weapon and spell configurations. The main goal is to allow players to compare different gear setups and builds to optimize their damage.
+
+## Core Features
+
+- **Dual Calculator Types:** The application supports two main types of calculators:
+    - **Weapon Damage Calculator:** For calculating damage from melee and ranged weapons.
+    - **Spell Damage Calculator:** For calculating damage from spells.
+- **Dynamic Set Management:** Users can add, remove, and rename multiple "calculator sets" to compare different configurations side-by-side. The sets can be reordered via drag-and-drop.
+- **Comprehensive Calculation Logic:**
+    - **Weapon Calculator:** Takes into account a wide range of stats including weapon dice, base damage, critical threat range and multiplier, sneak attack damage, imbue dice, and various power-based scaling (Melee/Ranged Power). It also handles miss/graze mechanics and unscaled damage sources.
+    - **Spell Calculator:** Calculates spell damage based on base spell dice, caster level scaling, multiple spell power sources, critical chance/damage, and metamagic feats (Empower, Maximize, Intensify).
+- **Interactive User Interface:**
+    - The UI is built with HTML, CSS, and JavaScript, providing a dynamic and responsive experience.
+    - It features a tabbed navigation system to switch between calculator sets.
+    - A theme-switcher allows users to toggle between light and dark modes.
+    - A comparison table at the bottom summarizes the average damage of all active sets, highlighting the best-performing one.
+- **State Management:** The application's state, including all input values and the configuration of each calculator set, is automatically saved to the browser's session storage. This allows users to refresh the page without losing their data.
+- **Import/Export:** Users can import and export their calculator sets as a JSON file, which is useful for sharing builds or backing up data.
+
+## Technical Implementation
+
+- **Frontend:** The application is built using plain HTML5, CSS3, and modern JavaScript (ES6+).
+- **HTML (`index.html`):** Defines the structure of the application. It uses `<template>` elements to create reusable blueprints for both the weapon and spell calculator sets.
+- **CSS (`style.css`):** Provides the styling for the application, including a dark mode theme and responsive design for different screen sizes.
+- **JavaScript (`script.js`, `SpellCalculator.js`):** The core logic is encapsulated in three main JavaScript classes:
+    - `Calculator` (in `script.js`): Manages the logic and UI for a single weapon damage calculator instance.
+    - `SpellCalculator` (in `SpellCalculator.js`): Manages the logic and UI for a single spell damage calculator instance.
+    - `CalculatorManager` (in `script.js`): Acts as the main controller for the application. It handles the creation, deletion, and management of all calculator instances, tab navigation, drag-and-drop functionality, state saving/loading, and the import/export feature.
+
+The project also includes documentation files like `gemini.md` (a project overview) and `session_summary.md` (a development changelog).

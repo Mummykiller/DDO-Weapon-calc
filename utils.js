@@ -61,49 +61,8 @@ export function parseDiceNotation(diceString) {
             totalAverage += numDice * (numSides + 1) / 2;
         } else {
             // If not a die roll, it's a flat number (e.g., "5" or "-2")
-            totalAverage += parseFloat(term) || 0;
+            totalAverage += (parseFloat(term) || 0);
         }
     }
     return totalAverage;
-}
-
-/**
- * Serializes the state of form inputs within a given container element.
- * @param {HTMLElement} container - The container element.
- * @returns {object} An object representing the form state.
- */
-export function serializeForm(container) {
-    if (!container) return {};
-    const state = {};
-    const allInputs = container.querySelectorAll('input[data-element], select[data-element]');
-    allInputs.forEach(input => {
-        const key = input.dataset.element;
-        if (input.type === 'checkbox') {
-            state[key] = input.checked;
-        } else {
-            state[key] = input.value;
-        }
-    });
-    return state;
-}
-
-/**
- * Deserializes the state of form inputs within a given container element.
- * @param {HTMLElement} container - The container element.
- * @param {object} state - An object representing the form state.
- */
-export function deserializeForm(container, idSuffix, state) {
-    if (!state || !container) return;
-
-    const allInputs = container.querySelectorAll('input[data-element], select[data-element]');
-    allInputs.forEach(input => {
-        const key = input.dataset.element;
-        if (state.hasOwnProperty(key)) {
-            if (input.type === 'checkbox') {
-                input.checked = state[key];
-            } else {
-                input.value = state[key];
-            }
-        }
-    });
 }

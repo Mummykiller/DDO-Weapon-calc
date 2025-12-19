@@ -32,17 +32,14 @@ document.addEventListener('DOMContentLoaded', () => {
             this.undoStack = [];
             this.redoStack = [];
 
-            this.activeEnterHandler = null;
-            this.activeContainerForEnter = null;
-
             this.activeSetId = 1;
             this.nextSetId = 1; // Moved nextSetId into CalculatorManager
 
-            this.addSetBtn.addEventListener('click', () => this.addNewSet('weapon'));
-            this.addSpellSetBtn.addEventListener('click', () => this.addNewSet('spell'));
+            this.addSetBtn.addEventListener('click', () => this.addNewSet());
+            this.addSpellSetBtn.addEventListener('click', () => this.addNewSpellSet());
             // Try to load state. If it fails (e.g., first visit), create the initial set.
             if (!this.loadState()) {
-                this.addNewSet('weapon', 1);
+                this.addNewSet(1);
                 this.calculators.get(1)?.calculateDdoDamage(); // Perform initial calculation
             }
 
@@ -52,18 +49,93 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
 
-        addNewSet(type = 'weapon', setIdToUse = null, index = -1) {
+        addNewSet(setIdToUse = null, index = -1) {
+            if (this.calculators.size >= 6) {
+                alert("You have reached the maximum of 6 weapon sets.");
+                return;
+            }
+
+            // If this is a user action (not part of loading or undo), record it.
+            if (setIdToUse === null) {
+                // We need to know the ID before creating it.
+                const futureSetId = this.findNextAvailableId();
+                this.recordAction({ type: 'add', setId: futureSetId });
+            }
+
+            // Get the state of the currently active set to copy it
+            const activeCalc = this.calculators.get(this.activeSetId);
+            const stateToCopy = (setIdToUse === null && activeCalc instanceof WeaponCalculator) ? activeCalc.getState() : null; // Only copy state if creating a new set from an existing one
+
+            let newSetId;
+            if (setIdToUse !== null) {
+                newSetId = setIdToUse;
+                // Ensure the global nextSetId counter is always ahead of the largest known ID.
+                // This prevents ID collisions when adding a new set after loading a specific set.
+                if (newSetId >= this.nextSetId) {
+                    this.nextSetId = newSetId + 1;
+                }
+            } else {
+                newSetId = this.findNextAvailableId();
+            }
+
+            // Get the inner HTML of the template set (calculator-set-1)
+            const templateNode = document.getElementById('calculator-set-template').content.cloneNode(true);
+
+            // Replace IDs and 'for' attributes within the inner HTML
+            let modifiedInnerHtml = templateNode.firstElementChild.outerHTML.replace(/\s(id)=\"([^\"]+)\"/g, (match, attr, id) => {
+                return ` id="${id}-set${newSetId}"`;
+            });
+            modifiedInnerHtml = modifiedInnerHtml.replace(/for=\"([^\"]+)\"/g, (match, id) => {
+                return `for="${id}-set${newSetId}"`;
+            });
+
+            // Create the new container div and set its properties
+            const newSetContainer = document.createElement('div');
+            newSetContainer.id = `calculator-set-${newSetId}`; // e.g., calculator-set-2
+            newSetContainer.className = 'calculator-container calculator-set'; // Copy classes from template
+            newSetContainer.innerHTML = modifiedInnerHtml; // Set the modified inner HTML
+
+            // Append the new container to the DOM at the correct index
+            const allContainers = this.setsContainer.querySelectorAll('.calculator-set');
+            if (index !== -1 && index < allContainers.length) {
+                this.setsContainer.insertBefore(newSetContainer, allContainers[index]);
+            } else {
+                this.setsContainer.appendChild(newSetContainer);
+            }
+
+            // Create and add the new tab at the correct index
+            const tab = this.createTab(newSetId);
+            const allTabs = this.navContainer.querySelectorAll('.nav-tab');
+            if (index !== -1 && index < allTabs.length) {
+                this.navContainer.insertBefore(tab, allTabs[index]);
+            } else {
+                const firstButton = this.navContainer.querySelector('.nav-action-btn');
+                this.navContainer.insertBefore(tab, firstButton || null);
+            }
+
+            this.calculators.set(newSetId, new WeaponCalculator(newSetId, this, `Set ${newSetId}`));
+            const newCalc = this.calculators.get(newSetId);
+
+            // If we have a state to copy, apply it to the new set
+            if (stateToCopy && newCalc) {
+                newCalc.setState(stateToCopy);
+            }
+
+            this.switchToSet(newSetId);
+            if (!this.isLoading) {
+                this.saveState();
+            }
+            this.updateComparisonTable();
+        }
+
+        addNewSpellSet(setIdToUse = null, index = -1) {
             if (this.calculators.size >= 6) {
                 alert("You have reached the maximum of 6 sets.");
                 return;
             }
 
-            const isSpell = type === 'spell';
             const activeCalc = this.calculators.get(this.activeSetId);
-            const stateToCopy = (setIdToUse === null && (
-                (isSpell && activeCalc instanceof SpellCalculator) || 
-                (!isSpell && activeCalc instanceof WeaponCalculator)
-            )) ? activeCalc.getState() : null;
+            const stateToCopy = (setIdToUse === null && activeCalc instanceof SpellCalculator) ? activeCalc.getState() : null;
 
             let newSetId;
             if (setIdToUse !== null) {
@@ -75,13 +147,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 newSetId = this.findNextAvailableId();
             }
 
-            const templateId = isSpell ? 'spell-calculator-template' : 'calculator-set-template';
-            const templateNode = document.getElementById(templateId).content.cloneNode(true);
+            const templateNode = document.getElementById('spell-calculator-template').content.cloneNode(true);
 
-            let modifiedInnerHtml = templateNode.firstElementChild.outerHTML.replace(/\s(id)="([^"]+)"/g, (match, attr, id) => {
+            let modifiedInnerHtml = templateNode.firstElementChild.outerHTML.replace(/\s(id)=\"([^\"]+)\"/g, (match, attr, id) => {
                 return ` id="${id}-set${newSetId}"`;
             });
-            modifiedInnerHtml = modifiedInnerHtml.replace(/for="([^"]+)"/g, (match, id) => {
+            modifiedInnerHtml = modifiedInnerHtml.replace(/for=\"([^\"]+)\"/g, (match, id) => {
                 return `for="${id}-set${newSetId}"`;
             });
 
@@ -90,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
             newSetContainer.className = 'calculator-container calculator-set';
             newSetContainer.innerHTML = modifiedInnerHtml;
 
+            // Append the new container to the DOM at the correct index
             const allContainers = this.setsContainer.querySelectorAll('.calculator-set');
             if (index !== -1 && index < allContainers.length) {
                 this.setsContainer.insertBefore(newSetContainer, allContainers[index]);
@@ -97,10 +169,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.setsContainer.appendChild(newSetContainer);
             }
 
+            // Create and add the new tab at the correct index
             const tab = this.createTab(newSetId);
-            if (isSpell) {
-                tab.classList.add('spell-tab-indicator');
-            }
+            tab.classList.add('spell-tab-indicator');
             const allTabs = this.navContainer.querySelectorAll('.nav-tab');
             if (index !== -1 && index < allTabs.length) {
                 this.navContainer.insertBefore(tab, allTabs[index]);
@@ -109,10 +180,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.navContainer.insertBefore(tab, firstButton || null);
             }
 
-            const CalculatorClass = isSpell ? SpellCalculator : WeaponCalculator;
-            const setName = isSpell ? `Spell Set ${newSetId}` : `Set ${newSetId}`;
-            this.calculators.set(newSetId, new CalculatorClass(newSetId, this, setName));
-            
+
+            this.calculators.set(newSetId, new SpellCalculator(newSetId, this, `Spell Set ${newSetId}`));
             const newCalc = this.calculators.get(newSetId);
 
             if (stateToCopy && newCalc) {
@@ -140,6 +209,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     tabNameSpan.blur();
+                }
+            });
+            tabNameSpan.addEventListener('blur', () => {
+                const calc = this.calculators.get(setId);
+                if (calc) {
+                    if (calc instanceof WeaponCalculator) {
+                        calc.handleInputChange();
+                    } else {
+                        calc.calculateSpellDamage();
+                    }
+                    if (this.activeSetId === setId) {
+                        calc.updateSummaryHeader();
+                    }
                 }
             });
 
@@ -181,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (calc instanceof WeaponCalculator) {
                             calc.handleInputChange();
                         } else {
-                            calc.handleInputChange({ target: span }); // Simulate a change
+                            calc.calculateSpellDamage();
                         }
                         if (this.activeSetId === setId) calc.updateSummaryHeader();
                     }
@@ -190,7 +272,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         recreateSet(setId, state, index) {
-            this.addNewSet(state.type, setId, index);
+            if (state.type === 'spell') {
+                this.addNewSpellSet(setId, index);
+            } else {
+                this.addNewSet(setId, index);
+            }
             const newCalc = this.calculators.get(setId);
             if (newCalc) {
                 newCalc.setState(state);
@@ -251,43 +337,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         switchToSet(setId) {
-            // If there's an old handler on a previous container, remove it first.
-            if (this.activeContainerForEnter && this.activeEnterHandler) {
-                this.activeContainerForEnter.removeEventListener('keydown', this.activeEnterHandler);
-            }
-
             // Deactivate all
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.calculator-set').forEach(s => s.classList.remove('active'));
 
             // Activate the selected one
-            const newTab = document.querySelector(`.nav-tab[data-set="${setId}"]`);
-            const newContainer = document.getElementById(`calculator-set-${setId}`);
-
-            if (!newTab || !newContainer) return; // Safety check
-
-            newTab.classList.add('active');
-            newContainer.classList.add('active');
-
+            document.querySelector(`.nav-tab[data-set="${setId}"]`).classList.add('active');
+            document.getElementById(`calculator-set-${setId}`).classList.add('active');
             this.activeSetId = setId;
             const calc = this.calculators.get(setId);
             if (calc instanceof WeaponCalculator) {
                 calc.updateSummaryHeader();
             }
-
-            // Define the new handler for the 'Enter' key
-            this.activeEnterHandler = (event) => {
-                if (event.key === 'Enter' && !event.target.classList.contains('tab-name')) {
-                    event.preventDefault();
-                    if (calc instanceof WeaponCalculator) {
-                        calc.calculateDdoDamage();
-                    } else if (calc instanceof SpellCalculator) {
-                        calc.calculateSpellDamage();
-                    }
-                }
-            };
-            this.activeContainerForEnter = newContainer;
-            this.activeContainerForEnter.addEventListener('keydown', this.activeEnterHandler);
         }
 
         updateComparisonTable() {
@@ -466,6 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             this.modalCopyBtn.addEventListener('click', () => this.copyToClipboard());
+            this.modalSaveFileBtn.addEventListener('click', () => this.saveToFile());
             this.modalLoadBtn.addEventListener('click', () => this.importFromText());
 
             // Trigger file input when "Load from File" is conceptually clicked
@@ -489,7 +551,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.modalFileInput.classList.add('hidden');
             document.querySelector('.modal-format-toggle').classList.remove('hidden');
 
-            this.modalSaveFileBtn.onclick = () => this.saveToFile();
             this.modalBackdrop.classList.remove('hidden');
             this.setExportFormat('json'); // Default to JSON
         }
@@ -591,7 +652,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     summary += `Melee/Ranged Power: ${state['melee-power'] || 0}\n`;
                     summary += `Spell Power: ${state['spell-power'] || 0}\n`;
                     summary += `Multi-Strike: ${state['doublestrike'] || 0}% (${state['is-doubleshot'] ? 'Doubleshot' : 'Doublestrike'})\n\n`;
-                    summary += `Archer's Focus: ${state['archers-focus'] || 0} stacks (+${(state['archers-focus'] || 0) * 5} RP)\n\n`;
 
                     summary += `--- Sneak Attack ---\n`;
                     summary += `Damage: ${state['sneak-attack-dice'] || 0}d6 + ${state['sneak-bonus'] || 0}\n\n`;
@@ -604,75 +664,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     summary += `Total Avg Damage: ${calc.totalAverageDamage.toFixed(2)}\n`;
                     summary += `Avg Base: ${calc.totalAvgBaseHitDmg.toFixed(2)}, Avg Sneak: ${calc.totalAvgSneakDmg.toFixed(2)}, Avg Imbue: ${calc.totalAvgImbueDmg.toFixed(2)}, Avg Unscaled: ${calc.totalAvgUnscaledDmg.toFixed(2)}\n\n\n`;
                 } else if (calc instanceof SpellCalculator) {
-                    // Reconstruct structured data from flat state for summary generation
-                    const spellPowerProfiles = [];
-                    const spellDamageSources = [];
-                    for (const key in state) {
-                        if (key.startsWith('spell-power-type-')) {
-                            const id = key.substring('spell-power-type-'.length);
-                            spellPowerProfiles.push({
-                                id: parseInt(id, 10),
-                                type: state[key] || 'Unnamed',
-                                spellPower: state[`spell-power-${id}`] || 0,
-                                critChance: state[`spell-crit-chance-${id}`] || 0,
-                                critDamage: state[`spell-crit-damage-${id}`] || 0,
-                            });
-                        } else if (key.startsWith('spell-name-')) {
-                            const id = key.substring('spell-name-'.length);
-                            const source = {
-                                id: parseInt(id, 10),
-                                name: state[key] || `Source ${id}`,
-                                base: state[`spell-damage-${id}`] || '0',
-                                clScaled: state[`spell-cl-scaling-${id}`] || '0',
-                                casterLevel: state[`caster-level-${id}`] || 0,
-                                hitCount: state[`spell-hit-count-${id}`] || 1,
-                                additionalScalings: [],
-                            };
-                            // Now, find additional scalings for this source
-                            for (const subKey in state) {
-                                if (subKey.startsWith(`additional-scaling-base-${id}-`)) {
-                                    const scalingId = subKey.substring(`additional-scaling-base-${id}-`.length);
-                                    source.additionalScalings.push({
-                                        base: state[subKey] || '0',
-                                        clScaled: state[`additional-scaling-cl-${id}-${scalingId}`] || '0',
-                                        profileId: state[`additional-scaling-sp-select-${id}-${scalingId}`] || 1,
-                                    });
-                                }
+                    summary += `--- Spell Properties ---\n`;
+                    if (state.spellDamageSources && state.spellDamageSources.length > 0) {
+                        state.spellDamageSources.forEach((source, index) => {
+                            summary += `  Spell ${index + 1} (${source.name || 'Unnamed'}):\n`;
+                            summary += `    Base Damage: ${source.base || '0'}\n`;
+                            summary += `    CL Scaled: ${source.clScaled || '0'}\n`;
+                            // Also include calculated avg hit and avg crit for this spell if available from the calculator instance
+                            if (calc.individualSpellDamages && calc.individualSpellDamages[index]) {
+                                summary += `    Avg Hit (pre-crit): ${calc.individualSpellDamages[index].averageHit.toFixed(2)}\n`;
+                                summary += `    Avg Crit: ${calc.individualSpellDamages[index].averageCrit.toFixed(2)}\n`;
                             }
-                            spellDamageSources.push(source);
-                        }
-                    }
-                    // Sort by ID to ensure correct order
-                    spellPowerProfiles.sort((a, b) => a.id - b.id);
-                    spellDamageSources.sort((a, b) => a.id - b.id);
-
-                    summary += `--- Metamagics & Boosts ---\n`;
-                    const activeToggles = [];
-                    if (state['metamagic-empower']) activeToggles.push('Empower');
-                    if (state['metamagic-maximize']) activeToggles.push('Maximize');
-                    if (state['metamagic-intensify']) activeToggles.push('Intensify');
-                    if (state['boost-wellspring']) activeToggles.push('Wellspring of Power');
-                    if (state['boost-night-horrors']) activeToggles.push('Night Horrors');
-                    summary += activeToggles.length > 0 ? activeToggles.join(', ') + '\n\n' : 'None\n\n';
-
-                    summary += `--- Spell Power Profiles ---\n`;
-                    spellPowerProfiles.forEach(p => {
-                        summary += `Profile ${p.id} (${p.type}): ${p.spellPower} SP, ${p.critChance}% Chance, +${p.critDamage}% Damage\n`;
-                    });
-                    summary += `\n`;
-
-                    summary += `--- Spell Damage Sources ---\n`;
-                    spellDamageSources.forEach(s => {
-                        summary += `Source "${s.name}" (x${s.hitCount} hits):\n`;
-                        summary += `  - Base: ${s.base} + (${s.clScaled} per CL) @ CL ${s.casterLevel}\n`;
-                        s.additionalScalings.forEach(as => {
-                            summary += `  - Extra: ${as.base} + (${as.clScaled} per CL) [Uses SP ${as.profileId}]\n`;
                         });
-                    });
-                    summary += `\n`;
+                    }
+                    summary += `Caster Level: ${state['caster-level'] || 0}\n`;
+                    summary += `Spell Power: ${state['spell-power'] || 0}\n`;
+                    summary += `Crit Chance: ${state['spell-crit-chance'] || 0}%\n`;
+                    summary += `Crit Damage: ${state['spell-crit-damage'] || 0}%\n`;
+        
 
                     summary += `--- AVERAGES ---\n`;
-                    summary += `Total Average Damage: ${calc.totalAverageDamage.toFixed(2)}\n\n\n`;
+                    summary += `Total Avg Damage: ${calc.totalAverageDamage.toFixed(2)}\n\n\n`;
                 }
             });
 
@@ -790,15 +802,16 @@ document.addEventListener('DOMContentLoaded', () => {
             this.nextSetId = 1; // Reset counter
 
             savedStates.forEach((state) => {
-                this.addNewSet(state.type, state.setId);
+                if (state.type === 'spell') {
+                    this.addNewSpellSet(state.setId);
+                } else {
+                    this.addNewSet(state.setId);
+                }
                 const newCalc = this.calculators.get(state.setId);
                 newCalc?.setState(state);
                 newCalc?.setTabName(state.tabName);
                 if (newCalc instanceof WeaponCalculator) {
                     newCalc.updateSummaryHeader();
-                    newCalc.calculateDdoDamage(); // Recalculate after setting state
-                } else if (newCalc instanceof SpellCalculator) {
-                    newCalc.calculateSpellDamage(); // Recalculate for spells too
                 }
             });
 
@@ -808,7 +821,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.isLoading = false;
             this.updateComparisonTable(); // Populate comparison table after loading
             this.hideModal();
-            this.saveState(); // Save the newly loaded state to sessionStorage
             return true;
         }
 
@@ -850,21 +862,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // The redo action is to add it back
                 this.redoStack.push({ ...action, type: 'ADD_SET' }); // The 'add' action doesn't have a state to copy
             } else if (action.type === 'VALUE_CHANGE' || action.type === 'RENAME') {
-                // To undo a value change, we apply the old value.
                 const calc = this.calculators.get(action.setId);
-                if (action.type === 'RENAME') {
-                    calc?.setTabName(action.oldValue);
-                } else {
-                    calc?.setState({ [action.key]: action.oldValue });
-                }
-                this.redoStack.push(action);
-            } else if (action.type === 'ADD_DYNAMIC_ROW') {
-                const calc = this.calculators.get(action.setId);
-                calc?.removeDynamicRow(action.rowId, action.rowType);
-                this.redoStack.push(action);
-            } else if (action.type === 'REMOVE_DYNAMIC_ROW') {
-                const calc = this.calculators.get(action.setId);
-                calc?.recreateDynamicRow(action.rowId, action.rowType, action.rowData, action.rowIndex);
+                calc?.applyValueChange(action.inputId || `tab-name-${action.setId}`, action.oldValue);
                 this.redoStack.push(action);
             }
 
@@ -887,19 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.undoStack.push({ ...action, type: 'ADD_SET' });
             } else if (action.type === 'VALUE_CHANGE' || action.type === 'RENAME') {
                 const calc = this.calculators.get(action.setId);
-                if (action.type === 'RENAME') {
-                    calc?.setTabName(action.newValue);
-                } else {
-                    calc?.setState({ [action.key]: action.newValue });
-                }
-                this.undoStack.push(action);
-            } else if (action.type === 'ADD_DYNAMIC_ROW') {
-                const calc = this.calculators.get(action.setId);
-                calc?.recreateDynamicRow(action.rowId, action.rowType, action.rowData, action.rowIndex);
-                this.undoStack.push(action);
-            } else if (action.type === 'REMOVE_DYNAMIC_ROW') {
-                const calc = this.calculators.get(action.setId);
-                calc?.removeDynamicRow(action.rowId, action.rowType);
+                calc?.applyValueChange(action.inputId || `tab-name-${action.setId}`, action.newValue);
                 this.undoStack.push(action);
             }
 
@@ -921,6 +908,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const offset = x - box.left - box.width / 2;
                 return (offset < 0 && offset > closest.offset) ? { offset: offset, element: child } : closest;
             }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+        // Global Enter key listener
+        addGlobalEnterListener() {
+            document.addEventListener('keyup', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    const activeCalc = this.calculators.get(this.activeSetId);
+                    if (activeCalc instanceof WeaponCalculator) {
+                        activeCalc.calculateDdoDamage();
+                    } else if (activeCalc instanceof SpellCalculator) {
+                        activeCalc.calculateSpellDamage();
+                    }
+                }
+            });
         }
 
         getTemplateHTML() {
@@ -962,4 +963,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Instantiate Manager ---
     const manager = new CalculatorManager();
+    manager.addGlobalEnterListener(); // Add the global listener after manager is ready
 });

@@ -1,0 +1,17 @@
+# Toon: Commit with Latest Log
+
+This toon defines the procedure for committing the latest changes with a message from the changelog.
+
+**Instructions for Gemini:**
+
+1.  **Identify Log File:** Find the most recent `.log` file in the directory. Assume it is `changelog.log` unless specified otherwise.
+
+2.  **Extract Latest Entry:** Read the identified log file. The "latest entry" is all text from the top of the file down to the first line that contains only `---`.
+
+3.  **Check for Changes:** Run `git status` to see which files are modified.
+
+4.  **Stage Changes:** Run `git add .` to stage all modified files for the commit.
+
+5.  **Commit:** Execute `git commit -m "..."`, using the text extracted in step 2 as the commit message.
+
+6.  **Confirm:** Report the successful creation of the commit to the user.

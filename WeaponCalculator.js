@@ -1,42 +1,9 @@
 import { parseDiceNotation } from './utils.js';
-import { BaseCalculator } from './BaseCalculator.js';
 
-const defaultState = {
-    'weapon-dice': 7,
-    'weapon-damage': '1d10+3',
-    'bonus-base-damage': 125,
-    'crit-threat': '15-20',
-    'crit-multiplier': 4,
-    'seeker-damage': '0',
-    'crit-multiplier-19-20': 2,
-    'miss-threshold': 1,
-    'graze-threshold': 5,
-    'graze-percent': 20,
-    'doublestrike': 0,
-    'is-doubleshot': false,
-    'melee-power': 0,
-    'spell-power': 0,
-    'archers-focus': 0,
-    'improved-archers-focus': false,
-    'reaper-skulls': '0',
-    'sneak-attack-dice': 0,
-    'sneak-bonus': 0,
-    'imbue-active': false,
-    'imbue-dice-count': 0,
-    'imbue-die-type': 6,
-    'imbue-scaling': 100,
-    'imbue-uses-spellpower': false,
-    'imbue-crits': false,
-    unscaledRows: [],
-    scaledDiceRows: [],
-};
-
-export class WeaponCalculator extends BaseCalculator {
+export class WeaponCalculator {
         constructor(setId, manager, name) { // Add 'name' to the constructor
-            super(setId, manager, name);
+            this.setId = setId;
             // Properties to store calculation results for the comparison table
-            this.state = JSON.parse(JSON.stringify(defaultState)); // Deep copy
-
             this.totalAverageDamage = 0;
             this.totalAvgBaseHitDmg = 0;
             this.totalAvgSneakDmg = 0;
@@ -44,26 +11,100 @@ export class WeaponCalculator extends BaseCalculator {
             this.totalAvgImbueDmg = 0; // This will hold the sum of all unscaled sources
             this.totalAvgScaledDiceDmg = 0;
 
+            this.idSuffix = `-set${setId}`;
             this.getElements();
+            this.manager = manager;
             this.addEventListeners();
+            // Dynamically count the number of unscaled rows present in the template/DOM.
+            this.unscaledRowCount = this.unscaledRowsContainer.querySelectorAll('.input-group-row').length;
+
+            this.recalculateHandler = this.handleInputChange.bind(this);
             // We will call the initial calculation from the manager
+
+            // Create a hidden span for measuring text width
+            this._measurementSpan = document.createElement('span');
+            this._measurementSpan.style.position = 'absolute';
+            this._measurementSpan.style.visibility = 'hidden';
+            this._measurementSpan.style.whiteSpace = 'nowrap';
+            document.body.appendChild(this._measurementSpan);
 
             // Initialize adaptive sizing for all relevant inputs
             this._initializeAdaptiveInputs();
         }
 
-        getElements() {
-            const get = (elementName) => this.container.querySelector(`[data-element="${elementName}"]`);
+        /**
+         * Resizes an individual input element to fit its content.
+         * @param {HTMLInputElement} inputElement - The input element to resize.
+         */
+        _resizeInput(inputElement) {
+            // Apply relevant styles from the input to the measurement span
+            const computedStyle = window.getComputedStyle(inputElement);
+            this._measurementSpan.style.fontFamily = computedStyle.fontFamily;
+            this._measurementSpan.style.fontSize = computedStyle.fontSize;
+            this._measurementSpan.style.fontWeight = computedStyle.fontWeight;
+            this._measurementSpan.style.letterSpacing = computedStyle.letterSpacing;
+            this._measurementSpan.style.textTransform = computedStyle.textTransform;
+            // Add padding from the input, but be careful with box-sizing
+            const paddingLeft = parseFloat(computedStyle.paddingLeft);
+            const paddingRight = parseFloat(computedStyle.paddingRight);
+            const borderWidthLeft = parseFloat(computedStyle.borderLeftWidth);
+            const borderWidthRight = parseFloat(computedStyle.borderRightWidth);
 
-            this.weaponDiceInput = get('weapon-dice');
+            this._measurementSpan.textContent = inputElement.value || inputElement.placeholder || '';
+
+            // Calculate the desired width including padding and border
+            // Adding a small buffer (e.g., 2-4px) to prevent scrollbars from appearing prematurely.
+            let desiredWidth = this._measurementSpan.offsetWidth + paddingLeft + paddingRight + borderWidthLeft + borderWidthRight + 4;
+
+            const minWidth = parseFloat(computedStyle.minWidth) || 50; // Use min-width from CSS or default
+            // If the input is in a flex container (which .input-group-row is),
+            // its max-width might be constrained by the container.
+            // For now, let's cap it at a reasonable value or its parent's width.
+            let maxWidth = parseFloat(computedStyle.maxWidth);
+            if (isNaN(maxWidth) || maxWidth === 0) { // If CSS max-width is 'none' or '0px', use a default.
+                maxWidth = 150; // A reasonable default maximum width
+            }
+
+            inputElement.style.width = `${Math.min(maxWidth, Math.max(minWidth, desiredWidth))}px`;
+        }
+
+        /**
+         * Initializes adaptive sizing for all relevant inputs in the calculator.
+         * Uses event delegation for dynamically added inputs.
+         */
+        _initializeAdaptiveInputs() {
+            const calculatorElement = document.getElementById(`calculator-set-${this.setId}`);
+            if (!calculatorElement) return;
+
+            // Use event delegation for 'input' events to handle resizing
+            calculatorElement.addEventListener('input', (e) => {
+                // Only resize inputs that have the 'adaptive-text-input' class
+                if (e.target.classList.contains('adaptive-text-input')) {
+                    this._resizeInput(e.target);
+                }
+            });
+
+            // Run initial resize on all existing adaptive inputs
+            this.resizeAllAdaptiveInputs();
+        }
+
+        /**
+         * Resizes all input elements that have the 'adaptive-text-input' class.
+         */
+        resizeAllAdaptiveInputs() {
+            const calculatorElement = document.getElementById(`calculator-set-${this.setId}`);
+            if (!calculatorElement) return;
+            calculatorElement.querySelectorAll('.adaptive-text-input').forEach(input => this._resizeInput(input));
+        }
+
+        getElements() {
+            const get = (baseId) => document.getElementById(baseId + this.idSuffix);
+
+            this.weaponDiceInput = get('weapon-dice'); // For setId=1, suffix is '', gets 'weapon-dice'. For setId=2, suffix is '-set2', gets 'weapon-dice-set2'.
             this.weaponDamageInput = get('weapon-damage');
             this.bonusBaseDamageInput = get('bonus-base-damage');
             this.meleePowerInput = get('melee-power');
             this.spellPowerInput = get('spell-power');
-            this.rangedPowerBonusSpan = get('ranged-power-bonus');
-            this.archersFocusSlider = get('archers-focus');
-            this.archersFocusValueSpan = get('archers-focus-value');
-            this.improvedArchersFocusCheckbox = get('improved-archers-focus');
             this.critThreatInput = get('crit-threat');
             this.critMultiplierInput = get('crit-multiplier');
             this.seekerDamageInput = get('seeker-damage');
@@ -76,7 +117,6 @@ export class WeaponCalculator extends BaseCalculator {
             this.grazeThresholdInput = get('graze-threshold');
             this.reaperSkullsSelect = get('reaper-skulls');
             this.grazePercentInput = get('graze-percent');
-            this.imbueActiveCheckbox = get('imbue-active');
             this.imbueDiceCountInput = get('imbue-dice-count');
             this.imbueDieTypeInput = get('imbue-die-type');
             this.imbueScalingInput = get('imbue-scaling');
@@ -87,15 +127,14 @@ export class WeaponCalculator extends BaseCalculator {
             this.avgBaseDamageSpan = get('avg-base-damage');
             this.avgSneakDamageSpan = get('avg-sneak-damage');
             this.avgImbueDamageSpan = get('avg-imbue-damage');
-            this.avgUnscaledDamageSpan = get('avg-unscaled-damage');
+            this.avgUnscaledDamageSpan = get('avg-unscaled-damage'); // Get the new summary span
             this.avgScaledDiceDamageSpan = get('avg-scaled-dice-damage');
             this.totalAvgDamageSpan = get('total-avg-damage');
             this.weaponScalingSpan = get('weapon-scaling');
             this.sneakScalingSpan = get('sneak-scaling');
             this.imbueScalingBreakdownSpan = get('imbue-scaling-breakdown');
-            this.unscaledScalingBreakdownSpan = get('unscaled-scaling-breakdown');
             this.scaledDiceScalingBreakdownSpan = get('scaled-dice-scaling-breakdown');
-            this.scaledDiceAddedInputDisplaySpan = get('scaled-dice-added-input-display');
+            this.scaledDiceAddedInputDisplaySpan = get('scaled-dice-added-input-display'); // New display in input area
             this.imbuePowerSourceSpan = get('imbue-power-source');
             this.summaryHeader = get('summary-header');
             this.reaperPenaltySpan = get('reaper-penalty');
@@ -147,90 +186,91 @@ export class WeaponCalculator extends BaseCalculator {
          * Gathers all raw input values from the DOM.
          * @returns {object} An object containing all necessary input values for calculation.
          */
-        _mapStateToInputs() {
-            const isDoubleshot = this.state['is-doubleshot'];
-            let multiStrikeValue = parseFloat(this.state['doublestrike']) || 0;
+        _getInputs() {
+            const isDoubleshot = this.isDoubleshotCheckbox.checked;
+            let multiStrikeValue = parseFloat(this.doublestrikeInput.value) || 0;
             if (!isDoubleshot) {
                 multiStrikeValue = Math.min(multiStrikeValue, 100);
             }
-        
+
             const unscaled = {
                 normal_multi: 0,
                 normal_noMulti: 0,
                 crit_multi: 0,
                 crit_noMulti: 0
             };
-        
-            let totalUnscaledAverage = 0;
-            
-            // Process unscaled rows from state
-            for (const key in this.state) {
-                if (key.startsWith('unscaled-damage-')) {
-                    const id = key.substring('unscaled-damage-'.length);
-                    const damage = parseDiceNotation(this.state[key]);
-                    const procChance = (parseFloat(this.state[`unscaled-proc-chance-${id}`]) || 100) / 100;
+
+            const rows = this.unscaledRowsContainer.querySelectorAll('.input-group-row');
+
+            rows.forEach(row => {
+                const dmgInput = row.querySelector(`input[id^="unscaled-damage-"]`);
+                const procInput = row.querySelector(`input[id^="unscaled-proc-chance-"]`);
+                const multiStrikeCheckbox = row.querySelector(`input[id^="unscaled-doublestrike-"]`);
+                const onCritCheckbox = row.querySelector(`input[id^="unscaled-on-crit-"]`);
+
+                if (dmgInput && procInput && multiStrikeCheckbox && onCritCheckbox) {
+                    const damage = parseDiceNotation(dmgInput.value);
+                    const procChance = (parseFloat(procInput.value) || 100) / 100;
                     const averageDamage = damage * procChance;
-                    totalUnscaledAverage += averageDamage;
-        
-                    const multiStrike = this.state[`unscaled-doublestrike-${id}`];
-                    const onCrit = this.state[`unscaled-on-crit-${id}`];
-        
-                    if (multiStrike) {
-                        if (onCrit) unscaled.crit_multi += averageDamage;
+
+                    if (multiStrikeCheckbox.checked) {
+                        if (onCritCheckbox.checked) unscaled.crit_multi += averageDamage;
                         else unscaled.normal_multi += averageDamage;
                     } else {
-                        if (onCrit) unscaled.crit_noMulti += averageDamage;
+                        if (onCritCheckbox.checked) unscaled.crit_noMulti += averageDamage;
                         else unscaled.normal_noMulti += averageDamage;
                     }
                 }
-            }
-        
+            });
+
+
             const scaledDiceDamage = [];
-            // Process scaled dice rows from state
-            for (const key in this.state) {
-                if (key.startsWith('scaled-dice-enabled-') && this.state[key]) {
-                    const id = key.substring('scaled-dice-enabled-'.length);
+            this.scaledDiceRowsContainer.querySelectorAll('.input-group-row').forEach(row => {
+                const baseDiceInput = row.querySelector(`input[id^="scaled-dice-base-"]`);
+                const scalingToggle = row.querySelector(`input[id^="scaled-dice-scaling-toggle-"]`);
+                const enabledCheckbox = row.querySelector(`input[id^="scaled-dice-enabled-"]`);
+
+                // Only process the row if it's enabled.
+                if (baseDiceInput && scalingToggle && enabledCheckbox && enabledCheckbox.checked) {
+                    const procChanceInput = row.querySelector(`input[id^="scaled-dice-proc-chance-"]`);
                     scaledDiceDamage.push({
-                        baseDice: this.state[`scaled-dice-base-${id}`],
-                        procChance: (parseFloat(this.state[`scaled-dice-proc-chance-${id}`]) || 100) / 100,
-                        enableScaling: this.state[`scaled-dice-scaling-toggle-${id}`],
-                        scalingPercent: parseFloat(this.state[`scaled-dice-scaling-percent-${id}`]) || 100,
-                        isEnabled: true
+                        baseDice: baseDiceInput.value,
+                        procChance: (parseFloat(procChanceInput.value) || 100) / 100,
+                        enableScaling: scalingToggle.checked,
+                        scalingPercent: parseFloat(row.querySelector(`input[id^="scaled-dice-scaling-percent-"]`).value) || 100,
+                        isEnabled: enabledCheckbox.checked
                     });
                 }
-            }
-        
+            });
+
             return {
-                additionalWeaponDice: parseFloat(this.state['weapon-dice']) || 0,
-                parsedWeaponDmg: parseDiceNotation(this.state['weapon-damage']) || 0,
-                bonusBaseDmg: parseFloat(this.state['bonus-base-damage']) || 0,
-                // Add Archer's Focus bonus to the base Melee/Ranged Power
-                meleePower: (parseFloat(this.state['melee-power']) || 0) + ((parseInt(this.state['archers-focus'], 10) || 0) * 5),
-                spellPower: parseFloat(this.state['spell-power']) || 0,
-                archersFocus: parseInt(this.state['archers-focus'], 10) || 0,
-                threatRange: this.parseThreatRange(this.state['crit-threat']),
-                critMult: parseFloat(this.state['crit-multiplier']) || 2,
-                critMult1920: parseFloat(this.state['crit-multiplier-19-20']) || 0,
-                seekerDmg: parseDiceNotation(this.state['seeker-damage']),
-                sneakDiceCount: parseInt(this.state['sneak-attack-dice']) || 0,
-                sneakBonusDmg: parseFloat(this.state['sneak-bonus']) || 0,
-                missThreshold: Math.max(1, parseInt(this.state['miss-threshold']) || 1),
-                grazeThreshold: parseInt(this.state['graze-threshold']) || 0,
-                grazePercent: (parseFloat(this.state['graze-percent']) || 0) / 100,
-                reaperSkulls: parseInt(this.state['reaper-skulls']) || 0,
-                isImbueActive: this.state['imbue-active'],
-                imbueDiceCount: parseInt(this.state['imbue-dice-count']) || 0,
-                imbueDieType: parseInt(this.state['imbue-die-type']) || 6,
-                imbueScaling: (parseFloat(this.state['imbue-scaling']) || 100) / 100,
-                imbueCrits: this.state['imbue-crits'],
-                imbueUsesSpellpower: this.state['imbue-uses-spellpower'],
+                additionalWeaponDice: parseFloat(this.weaponDiceInput.value) || 0,
+                parsedWeaponDmg: parseDiceNotation(this.weaponDamageInput.value) || 0,
+                bonusBaseDmg: parseFloat(this.bonusBaseDamageInput.value) || 0,
+                meleePower: parseFloat(this.meleePowerInput.value) || 0,
+                spellPower: parseFloat(this.spellPowerInput.value) || 0,
+                threatRange: this.parseThreatRange(this.critThreatInput.value),
+                critMult: parseFloat(this.critMultiplierInput.value) || 2,
+                critMult1920: parseFloat(this.critMultiplier1920Input.value) || 0,
+                seekerDmg: parseDiceNotation(this.seekerDamageInput.value), // Allow dice notation for seeker
+                sneakDiceCount: parseInt(this.sneakAttackDiceInput.value) || 0,
+                sneakBonusDmg: parseFloat(this.sneakBonusInput.value) || 0,
+                missThreshold: Math.max(1, parseInt(this.missThresholdInput.value) || 1),
+                grazeThreshold: parseInt(this.grazeThresholdInput.value) || 0,
+                grazePercent: (parseFloat(this.grazePercentInput.value) || 0) / 100,
+                reaperSkulls: parseInt(this.reaperSkullsSelect.value) || 0,
+                imbueDiceCount: parseInt(this.imbueDiceCountInput.value) || 0,
+                imbueDieType: parseInt(this.imbueDieTypeInput.value) || 6,
+                imbueScaling: (parseFloat(this.imbueScalingInput.value) || 100) / 100,
+                imbueCrits: this.imbueCritsCheckbox.checked,
+                imbueUsesSpellpower: this.imbueUsesSpellpowerCheckbox.checked,
                 doublestrikeChance: multiStrikeValue / 100,
                 isDoubleshot: isDoubleshot,
                 unscaled: unscaled,
-                scaledDiceDamage: scaledDiceDamage,
-                totalUnscaledAverage: totalUnscaledAverage
+                scaledDiceDamage: scaledDiceDamage
             };
         }
+
         /**
          * Calculates the probabilities of different hit outcomes based on d20 rolls.
          * @param {object} inputs - The object containing miss, graze, and crit thresholds.
@@ -268,11 +308,11 @@ export class WeaponCalculator extends BaseCalculator {
         _calculateDamagePortions(inputs) {
             const {
                 additionalWeaponDice, parsedWeaponDmg, bonusBaseDmg, meleePower, spellPower,
-                seekerDmg, sneakDiceCount, sneakBonusDmg, isImbueActive, imbueDiceCount, imbueDieType,
+                seekerDmg, sneakDiceCount, sneakBonusDmg, imbueDiceCount, imbueDieType, // This is a long line
                 imbueScaling, imbueUsesSpellpower, scaledDiceDamage
             } = inputs;
 
-            const baseDmg = (parsedWeaponDmg * additionalWeaponDice) + bonusBaseDmg;
+            const baseDmg = parsedWeaponDmg + (additionalWeaponDice * parsedWeaponDmg) + bonusBaseDmg;
             const powerMultiplier = 1 + (meleePower / 100);
             const weaponPortion = baseDmg * powerMultiplier;
             const seekerPortion = seekerDmg * powerMultiplier;
@@ -280,7 +320,8 @@ export class WeaponCalculator extends BaseCalculator {
             const sneakDiceDmg = sneakDiceCount * 3.5;
             const sneakPortion = (sneakDiceDmg + sneakBonusDmg) * (1 + (meleePower * 1.5) / 100);
 
-            const totalImbueDiceCount = isImbueActive ? imbueDiceCount + 1 : 0;
+            const imbueDice = imbueDiceCount * (imbueDieType + 1) / 2;
+            const totalImbueDiceCount = imbueDiceCount > 0 ? imbueDiceCount + 1 : 0;
             const totalImbueDiceAverage = totalImbueDiceCount * (imbueDieType + 1) / 2;
 
             const powerForImbue = imbueUsesSpellpower ? spellPower : meleePower;
@@ -324,7 +365,7 @@ export class WeaponCalculator extends BaseCalculator {
                 totalAvgScaledDiceDmg += lineResult;
 
                 // Build the text for this specific source
-                let breakdown = `(Base (${baseDiceAvg.toFixed(2)}) + Imbue (${additionalDiceAvg.toFixed(2)})) &times; Power (${powerMultiplier.toFixed(2)}) &times; Proc (${scaledDmg.procChance.toFixed(2)}) = ${lineResult.toFixed(2)}`;
+                let breakdown = `(${baseDiceAvg.toFixed(2)} (base) + ${additionalDiceAvg.toFixed(2)} (imbue)) * ${powerMultiplier.toFixed(2)} (power) * ${scaledDmg.procChance.toFixed(2)} (proc) = ${lineResult.toFixed(2)}`;
                 scaledDiceBreakdownText.push(breakdown); 
             });
 
@@ -402,36 +443,10 @@ export class WeaponCalculator extends BaseCalculator {
             const { baseDmg, sneakDiceDmg, sneakPortion, imbueDice, imbuePortion, powerForImbue } = portions;
             const { meleePower, sneakBonusDmg, imbueScaling, imbueUsesSpellpower, spellPower } = inputs;
 
-            //weapon breakdown
-            const weaponDiceAvg = (inputs.parsedWeaponDmg * inputs.additionalWeaponDice);
-            const weaponPowerMod = (1 + inputs.meleePower / 100);
-            const weaponAfterPowerMod = portions.weaponPortion;
-            const multiStrike = averages.multiStrikeMultiplier;
-            this.weaponScalingSpan.innerHTML = `${weaponDiceAvg.toFixed(2)} + ${inputs.bonusBaseDmg.toFixed(2)} &times; Power Mod (${weaponPowerMod.toFixed(2)}) = ${weaponAfterPowerMod.toFixed(2)} &times; DS (${multiStrike.toFixed(2)}) = <strong>${(weaponAfterPowerMod * multiStrike).toFixed(2)}</strong>`;
-
-            //sneak breakdown   
-            const sneakPowerMod = (1 + (meleePower * 1.5) / 100);
-            const sneakAfterPowerMod = sneakPortion;
-            this.sneakScalingSpan.innerHTML = `Dice Avg (${sneakDiceDmg.toFixed(2)}) + Flat (${sneakBonusDmg.toFixed(2)}) &times; Power Mod (${sneakPowerMod.toFixed(2)}) = ${sneakAfterPowerMod.toFixed(2)} &times; DS (${multiStrike.toFixed(2)}) = <strong>${(sneakAfterPowerMod * multiStrike).toFixed(2)}</strong>`;
-            
-            //imbue breakdown
-            const imbuePowerMod = (1 + (powerForImbue * imbueScaling) / 100);
-            const imbueAfterPowerMod = imbuePortion;
-            this.imbueScalingBreakdownSpan.innerHTML = `Dice Avg (${portions.imbueDice.toFixed(2)}) &times; Power Mod (${imbuePowerMod.toFixed(2)}) = ${imbueAfterPowerMod.toFixed(2)} &times; DS (${multiStrike.toFixed(2)}) = <strong>${(imbueAfterPowerMod * multiStrike).toFixed(2)}</strong>`;
-            
-            //unscaled breakdown
-            const unscaledWithMulti = inputs.unscaled.normal_multi + inputs.unscaled.crit_multi;
-            const unscaledWithoutMulti = inputs.unscaled.normal_noMulti + inputs.unscaled.crit_noMulti;
-            const unscaledBreakdownText = `
-                No DS (${unscaledWithoutMulti.toFixed(2)})    
-                || DS (${unscaledWithMulti.toFixed(2)}) &times; Multiplier (${multiStrike.toFixed(2)})
-                = <strong>${(unscaledWithMulti * averages.multiStrikeMultiplier + unscaledWithoutMulti).toFixed(2)}</strong>
-            `;
-            this.unscaledScalingBreakdownSpan.innerHTML = unscaledBreakdownText;
-
-            //scaled dice breakdown
-            const totalScaledDiceAfterPowerMod = portions.totalAvgScaledDiceDmg;
-            this.scaledDiceScalingBreakdownSpan.innerHTML = portions.finalScaledDiceBreakdown ? `${portions.finalScaledDiceBreakdown} &times; DS (${multiStrike.toFixed(2)}) = <strong>${(totalScaledDiceAfterPowerMod * multiStrike).toFixed(2)}</strong>` : '0';
+            this.weaponScalingSpan.textContent = `${baseDmg.toFixed(2)} * (1 + (${meleePower} / 100)) = ${portions.weaponPortion.toFixed(2)}`;
+            this.sneakScalingSpan.textContent = `(${sneakDiceDmg.toFixed(2)} + ${sneakBonusDmg.toFixed(2)}) * (1 + (${meleePower} * 1.5) / 100) = ${sneakPortion.toFixed(2)}`;
+            this.imbueScalingBreakdownSpan.textContent = `${portions.imbueDice.toFixed(2)} (from ${portions.totalImbueDiceCount}d${inputs.imbueDieType}) * (1 + (${powerForImbue} * ${imbueScaling * 100}%) / 100) = ${imbuePortion.toFixed(2)}`;
+            this.scaledDiceScalingBreakdownSpan.innerHTML = portions.finalScaledDiceBreakdown || '0';
             this.imbuePowerSourceSpan.textContent = imbueUsesSpellpower ? `Spell Power (${spellPower})` : `Melee Power (${meleePower})`;
             this.scaledDiceAddedInputDisplaySpan.textContent = portions.totalAddedScaledDice;
             
@@ -444,31 +459,15 @@ export class WeaponCalculator extends BaseCalculator {
             this.reaperPenaltySpan.textContent = `${((1 - averages.reaperMultiplier) * 100).toFixed(1)}% Reduction`;
 
             // Show/hide the "+1" for the imbue toggle
-            const showImbueToggleBonus = inputs.isImbueActive;
+            const showImbueToggleBonus = inputs.imbueDiceCount > 0;
             this.imbueToggleBonusSpan.classList.toggle('hidden', !showImbueToggleBonus);
             this.imbueToggleBonusSpan.previousElementSibling.classList.toggle('hidden', !showImbueToggleBonus); // Hides the '+' symbol
 
-            // Update Archer's Focus display
-            const archersFocusValue = inputs.archersFocus;
-            const archersFocusBonus = archersFocusValue * 5;
-            this.archersFocusValueSpan.textContent = archersFocusValue;
-            this.rangedPowerBonusSpan.textContent = archersFocusBonus;
-
-            // Update slider max based on the "Improved" checkbox
-            const isImproved = this.state['improved-archers-focus'];
-            this.archersFocusSlider.max = isImproved ? '25' : '15';
-
-            // If the slider's value is now greater than its max, clamp it.
-            // This handles unchecking "Improved" when the value is > 15.
-            if (parseInt(this.archersFocusSlider.value, 10) > parseInt(this.archersFocusSlider.max, 10)) {
-                this.archersFocusSlider.value = this.archersFocusSlider.max;
-                this.state['archers-focus'] = this.archersFocusSlider.value; // Also update the state directly
-            }
         }
 
         calculateDdoDamage() {
             // 1. Gather all data
-            const inputs = this._mapStateToInputs();
+            const inputs = this._getInputs();
 
             // 2. Calculate probabilities of outcomes
             const probabilities = this._calculateProbabilities(inputs);
@@ -594,46 +593,14 @@ export class WeaponCalculator extends BaseCalculator {
             }
         }
 
-        handleInputChange(e) {
-            const input = e.target;
-            const key = input.dataset.element;
-            if (!key) return;
-
-            let value;
-            if (input.type === 'checkbox') {
-                value = input.checked;
-            } else if (input.type === 'number') {
-                value = input.value === '' ? 0 : parseFloat(input.value);
-            } else {
-                value = input.value;
-            }
-
-            this.state[key] = value;
-
+        handleInputChange(action = null) {
+            if (action) this.manager.recordAction(action);
             this.calculateDdoDamage();
             this.manager.updateComparisonTable();
             this.manager.saveState();
-
-            // If the "Improved" checkbox was just changed, we must check if the slider value is now invalid.
-            if (key === 'improved-archers-focus') {
-                const max = this.archersFocusSlider.max; // The max has already been updated by the UI render
-                if (parseInt(this.state['archers-focus'], 10) > parseInt(max, 10)) {
-                    // If the value is out of bounds, update the state and trigger a new input event to recalculate everything.
-                    this.state['archers-focus'] = max;
-                    this.archersFocusSlider.dispatchEvent(new Event('input', { bubbles: true }));
-                }
-            }
-        }
-
-        setState(state) {
-            // Perform a deep merge of the new state into the existing state
-            this.state = { ...this.state, ...state };
-            super.setState(this.state); // This calls deserializeForm
-            this.calculateDdoDamage();
         }
 
         addEventListeners() {
-            super.addEventListeners();
             this.calculateBtn.addEventListener('click', () => this.calculateDdoDamage());
 
             // Add listeners for preset scaling buttons
@@ -643,14 +610,50 @@ export class WeaponCalculator extends BaseCalculator {
             this.set150ScalingBtn?.addEventListener('click', (e) => this.handleSetScalingClick(e, 150));
             this.set200ScalingBtn?.addEventListener('click', (e) => this.handleSetScalingClick(e, 200));
 
-            if (this.container) {
-                const boundHandler = this.handleInputChange.bind(this);
-                this.container.addEventListener('input', boundHandler);
-                this.container.addEventListener('change', boundHandler);
+            const calculatorElement = document.getElementById(`calculator-set-${this.setId}`);
+            let oldValue = null;
 
-                this.container.addEventListener('blur', (e) => {
+            if (calculatorElement) {
+                // Use 'mousedown' to capture the value right before a change might occur.
+                // This works for clicks, typing, and stepper buttons.
+                calculatorElement.addEventListener('mousedown', (e) => {
+                    const targetTag = e.target.tagName;
+                    if (targetTag === 'INPUT' || targetTag === 'SELECT') {
+                        oldValue = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+                    }
+                });
+
+                // Use 'input' for text/number fields as it fires immediately.
+                // Use 'change' for checkboxes.
+                const recordChange = (e) => {
+                    const targetTag = e.target.tagName;
+                    if (targetTag === 'INPUT' || targetTag === 'SELECT') {
+                        const newValue = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+                        // Only record if the value actually changed.
+                        if (oldValue !== newValue) {
+                            const action = {
+                                type: 'VALUE_CHANGE',
+                                setId: this.setId,
+                                inputId: e.target.id,
+                                oldValue: oldValue,
+                                newValue: newValue
+                            };
+                            this.handleInputChange(action);
+                            // CRITICAL FIX: Update oldValue after recording the change.
+                            oldValue = newValue;
+                        }
+                    }
+                };
+                calculatorElement.addEventListener('input', recordChange);
+                calculatorElement.addEventListener('change', recordChange);
+
+                // Add a 'blur' event listener to the container to catch when a user leaves an input.
+                // This will set empty number fields to 0 for a better user experience.
+                calculatorElement.addEventListener('blur', (e) => {
                     const input = e.target;
+                    // Check if the target is a number input and its value is empty.
                     const isNumericInput = input.type === 'number';
+                    // Also check for text inputs that are used for damage notation.
                     const isDamageText = input.type === 'text' && (input.id.includes('unscaled-damage') || input.id.includes('weapon-damage'));
 
                     if (input.tagName === 'INPUT' && (isNumericInput || isDamageText) && input.value.trim() === '') {
@@ -658,7 +661,7 @@ export class WeaponCalculator extends BaseCalculator {
 
                         // Manually trigger a 'change' event so the new '0' value is calculated and saved.
                         input.dispatchEvent(new Event('change', { bubbles: true }));
-                    } 
+                    }
                 }, true); // Use event capturing.
             }
 
@@ -670,26 +673,12 @@ export class WeaponCalculator extends BaseCalculator {
             // current and future remove buttons within this container.
             this.unscaledRowsContainer.addEventListener('click', (e) => {
                 // Check if a remove button was clicked
-                const removeBtn = e.target.closest('.remove-row-btn');
-                if (removeBtn) {
+                if (e.target && e.target.classList.contains('remove-row-btn')) {
                     e.preventDefault();
-                    const row = removeBtn.closest('.input-group-row');
-                    if (!row) return;
-
-                    const rowId = row.dataset.rowId;
-                    const rowData = {};
-                    row.querySelectorAll('input[data-element]').forEach(input => {
-                        rowData[input.dataset.element] = input.type === 'checkbox' ? input.checked : input.value;
-                    });
-
-                    const parent = row.parentNode;
-                    const rowIndex = Array.prototype.indexOf.call(parent.children, row);
-
-                    this.manager.recordAction({ type: 'REMOVE_DYNAMIC_ROW', setId: this.setId, rowType: 'unscaled', rowId, rowData, rowIndex });
-
-                    row.remove();
-                    this.calculateDdoDamage();
-                    this.manager.saveState();
+                    // Find the closest parent row and remove it
+                    e.target.closest('.input-group-row').remove();
+                    // Trigger a recalculation and save state
+                    this.handleInputChange(); // This doesn't need an action, as removing rows isn't undoable (yet)
                 }
             });
 
@@ -698,28 +687,21 @@ export class WeaponCalculator extends BaseCalculator {
 
             // Use event delegation for remove buttons within the scaled dice container
             this.scaledDiceRowsContainer.addEventListener('click', (e) => {
-                const removeBtn = e.target.closest('.remove-row-btn');
-                if (removeBtn) {
+                if (e.target && e.target.classList.contains('remove-row-btn')) {
                     e.preventDefault();
-                    const row = removeBtn.closest('.input-group-row');
-                    if (!row) return;
-
-                    const rowId = row.dataset.rowId;
-                    const rowData = {};
-                    row.querySelectorAll('input[data-element]').forEach(input => {
-                        rowData[input.dataset.element] = input.type === 'checkbox' ? input.checked : input.value;
-                    });
-
-                    const parent = row.parentNode;
-                    const rowIndex = Array.prototype.indexOf.call(parent.children, row);
-
-                    this.manager.recordAction({ type: 'REMOVE_DYNAMIC_ROW', setId: this.setId, rowType: 'scaled', rowId, rowData, rowIndex });
-
-                    row.remove();
-                    this.calculateDdoDamage();
-                    this.manager.saveState();
+                    e.target.closest('.input-group-row').remove();
+                    this.handleInputChange();
                 }
             });
+        }
+        removeEventListeners() { // Remove listeners from all inputs
+            const calculatorElement = document.getElementById(`calculator-set-${this.setId}`);
+            if (calculatorElement) {
+                // Event listeners are on the container, which gets removed, so no need to manually remove them.
+            }
+            // With event delegation, we don't need to remove listeners from individual inputs.
+            // The listeners are on the container, which gets removed from the DOM entirely
+            // when a set is deleted, cleaning up the listeners automatically.
         }
 
         addUnscaledDamageRow(event) {
@@ -734,7 +716,6 @@ export class WeaponCalculator extends BaseCalculator {
                 return;
             }
             const newRow = template.content.cloneNode(true).firstElementChild;
-            newRow.dataset.rowId = newIndex;
         
             // Find the next available number for the label
             const existingRows = this.unscaledRowsContainer.querySelectorAll('.input-group-row');
@@ -742,12 +723,10 @@ export class WeaponCalculator extends BaseCalculator {
         
             // Update IDs and 'for' attributes to be unique
             newRow.querySelectorAll('[id*="-X"]').forEach(el => {
-                el.dataset.element = el.dataset.element.replace('-X', `-${newIndex}`);
                 el.id = el.id.replace('-X', `-${newIndex}${idSuffix}`);
             });
             newRow.querySelectorAll('[for*="-X"]').forEach(label => {
-                const oldFor = label.getAttribute('for');
-                label.setAttribute('for', oldFor.replace('-X', `-${newIndex}${idSuffix}`));
+                label.setAttribute('for', label.getAttribute('for').replace('-X', `-${newIndex}${idSuffix}`));
             });
         
             // Update the main label text
@@ -758,17 +737,6 @@ export class WeaponCalculator extends BaseCalculator {
         
             // Initialize adaptive sizing for the new inputs
             newRow.querySelectorAll('.adaptive-text-input').forEach(input => this._resizeInput(input));
-        
-            const rowData = {};
-            newRow.querySelectorAll('input[data-element]').forEach(input => {
-                rowData[input.dataset.element] = input.type === 'checkbox' ? input.checked : input.value;
-            });
-            const parent = newRow.parentNode;
-            const rowIndex = Array.prototype.indexOf.call(parent.children, newRow);
-
-            this.manager.recordAction({ type: 'ADD_DYNAMIC_ROW', setId: this.setId, rowType: 'unscaled', rowId: newIndex, rowData, rowIndex });
-            this.calculateDdoDamage();
-            this.manager.saveState();
         }
 
         addScaledDiceDamageRow(event) {
@@ -778,22 +746,21 @@ export class WeaponCalculator extends BaseCalculator {
 
             const newRow = document.createElement('div');
             newRow.className = 'input-group-row';
-            newRow.dataset.rowId = newIndex;
             newRow.innerHTML = `
-                <input type="checkbox" data-element="scaled-dice-enabled-${newIndex}" id="scaled-dice-enabled-${newIndex}${idSuffix}" checked title="Enable/disable this scaled dice source.">
-                <label for="scaled-dice-base-${newIndex}${idSuffix}" >Base Dice</label>
-                <input type="text" data-element="scaled-dice-base-${newIndex}" id="scaled-dice-base-${newIndex}${idSuffix}" value="1d6" class="adaptive-text-input">
+                <input type="checkbox" id="scaled-dice-enabled-${newIndex}${idSuffix}" checked title="Enable/disable this scaled dice source.">
+                <label for="scaled-dice-base-${newIndex}${idSuffix}">Base Dice</label>
+                <input type="text" id="scaled-dice-base-${newIndex}${idSuffix}" value="1d6" class="adaptive-text-input">
 
-                <label for="scaled-dice-proc-chance-${newIndex}${idSuffix}" class="short-label" >Proc %</label>
-                <input type="number" data-element="scaled-dice-proc-chance-${newIndex}" id="scaled-dice-proc-chance-${newIndex}${idSuffix}" value="100" min="0" max="100" class="small-input adaptive-text-input" title="Chance for this damage to occur on a hit">
+                <label for="scaled-dice-proc-chance-${newIndex}${idSuffix}" class="short-label">Proc %</label>
+                <input type="number" id="scaled-dice-proc-chance-${newIndex}${idSuffix}" value="100" min="0" max="100" class="small-input adaptive-text-input" title="Chance for this damage to occur on a hit">
 
-                <label for="scaled-dice-scaling-percent-${newIndex}${idSuffix}" class="short-label" >Scaling %</label>
-                <input type="number" data-element="scaled-dice-scaling-percent-${newIndex}" id="scaled-dice-scaling-percent-${newIndex}${idSuffix}" value="100" class="small-input" title="Percentage of Melee/Ranged Power to apply to this damage source.">
+                <label for="scaled-dice-scaling-percent-${newIndex}${idSuffix}" class="short-label">Scaling %</label>
+                <input type="number" id="scaled-dice-scaling-percent-${newIndex}${idSuffix}" value="100" class="small-input" title="Percentage of Melee/Ranged Power to apply to this damage source.">
                 
-                <input type="checkbox" data-element="scaled-dice-scaling-toggle-${newIndex}" id="scaled-dice-scaling-toggle-${newIndex}${idSuffix}" checked>
-                <label for="scaled-dice-scaling-toggle-${newIndex}${idSuffix}" class="inline-checkbox-label"  title="Enable scaling with imbue dice count.">Scale with Imbue</label>
+                <input type="checkbox" id="scaled-dice-scaling-toggle-${newIndex}${idSuffix}" checked>
+                <label for="scaled-dice-scaling-toggle-${newIndex}${idSuffix}" class="inline-checkbox-label" title="Enable scaling with imbue dice count.">Scale with Imbue</label>
                 
-                <button class="remove-row-btn"  title="Remove this damage source">&times;</button>
+                <button class="remove-row-btn" title="Remove this damage source">&times;</button>
             `;
 
             this.scaledDiceRowsContainer.appendChild(newRow);
@@ -805,76 +772,174 @@ export class WeaponCalculator extends BaseCalculator {
             // Initialize adaptive sizing for the new input
             newRow.querySelectorAll('.adaptive-text-input').forEach(input => this._resizeInput(input));
 
-            const rowData = {};
-            newRow.querySelectorAll('input[data-element]').forEach(input => {
-                rowData[input.dataset.element] = input.type === 'checkbox' ? input.checked : input.value;
-            });
-            const parent = newRow.parentNode;
-            const rowIndex = Array.prototype.indexOf.call(parent.children, newRow);
-
-            this.manager.recordAction({ type: 'ADD_DYNAMIC_ROW', setId: this.setId, rowType: 'scaled', rowId: newIndex, rowData, rowIndex });
-            this.calculateDdoDamage();
-            this.manager.saveState();
+            // Add a dummy action to the undo stack if needed, or just save state
+            const action = {
+                type: 'ADD_SCALED_ROW',
+                setId: this.setId
+            };
+            this.handleInputChange(action);
         }
 
-        removeDynamicRow(rowId, rowType) {
-            const container = rowType === 'unscaled' ? this.unscaledRowsContainer : this.scaledDiceRowsContainer;
-            const row = container.querySelector(`[data-row-id="${rowId}"]`);
-            if (row) {
-                row.remove();
-                this.calculateDdoDamage();
-            }
-        }
-
-        recreateDynamicRow(rowId, rowType, rowData, rowIndex) {
-            const idSuffix = this.idSuffix;
-            let newRow;
-            let container;
-
-            if (rowType === 'unscaled') {
-                container = this.unscaledRowsContainer;
-                const template = document.getElementById('unscaled-row-template');
-                newRow = template.content.cloneNode(true).firstElementChild;
-                newRow.dataset.rowId = rowId;
-
-                const nextLabelNumber = container.querySelectorAll('.input-group-row').length + 1;
-                newRow.querySelector('label[for^="unscaled-damage-"]').textContent = `Unscaled Damage ${nextLabelNumber}`;
-
-                newRow.querySelectorAll('[id*="-X"]').forEach(el => {
-                    el.id = el.id.replace('-X', `-${rowId}${idSuffix}`);
-                });
-                newRow.querySelectorAll('[for*="-X"]').forEach(label => {
-                    label.setAttribute('for', label.getAttribute('for').replace('-X', `-${rowId}${idSuffix}`));
-                });
-            } else { // scaled
-                container = this.scaledDiceRowsContainer;
-                newRow = document.createElement('div');
-                newRow.className = 'input-group-row';
-                newRow.dataset.rowId = rowId;
-                newRow.innerHTML = `
-                    <input type="checkbox" data-element="scaled-dice-enabled-${rowId}" id="scaled-dice-enabled-${rowId}${idSuffix}" title="Enable/disable this scaled dice source.">
-                    <label for="scaled-dice-base-${rowId}${idSuffix}">Base Dice</label>
-                    <input type="text" data-element="scaled-dice-base-${rowId}" id="scaled-dice-base-${rowId}${idSuffix}" class="adaptive-text-input">
-                    <label for="scaled-dice-proc-chance-${rowId}${idSuffix}" class="short-label">Proc %</label>
-                    <input type="number" data-element="scaled-dice-proc-chance-${rowId}" id="scaled-dice-proc-chance-${rowId}${idSuffix}" class="small-input adaptive-text-input" title="Chance for this damage to occur on a hit">
-                    <label for="scaled-dice-scaling-percent-${rowId}${idSuffix}" class="short-label">Scaling %</label>
-                    <input type="number" data-element="scaled-dice-scaling-percent-${rowId}" id="scaled-dice-scaling-percent-${rowId}${idSuffix}" class="small-input" title="Percentage of Melee/Ranged Power to apply to this damage source.">
-                    <input type="checkbox" data-element="scaled-dice-scaling-toggle-${rowId}" id="scaled-dice-scaling-toggle-${rowId}${idSuffix}">
-                    <label for="scaled-dice-scaling-toggle-${rowId}${idSuffix}" class="inline-checkbox-label" title="Enable scaling with imbue dice count.">Scale with Imbue</label>
-                    <button class="remove-row-btn" title="Remove this damage source">&times;</button>
-                `;
-            }
-
-            newRow.querySelectorAll('input[data-element]').forEach(input => {
-                const key = input.dataset.element;
-                if (rowData.hasOwnProperty(key)) {
-                    input.type === 'checkbox' ? (input.checked = rowData[key]) : (input.value = rowData[key]);
+        getState() {
+            const state = {};
+            const allInputs = document.querySelectorAll(`#calculator-set-${this.setId} input, #calculator-set-${this.setId} select`);
+            allInputs.forEach(input => {
+                const key = input.id.replace(`-set${this.setId}`, '');
+                if (input.type === 'checkbox') {
+                    state[key] = input.checked;
+                } else {
+                    state[key] = input.value;
                 }
             });
 
-            container.insertBefore(newRow, container.children[rowIndex]);
-            newRow.querySelectorAll('.adaptive-text-input').forEach(input => this._resizeInput(input));
+            // Store unscaled damage rows
+            state.unscaledDamageRows = [];
+            this.unscaledRowsContainer.querySelectorAll('.input-group-row').forEach(row => {
+                const dmgInput = row.querySelector(`input[id^="unscaled-damage-"]`);
+                const procInput = row.querySelector(`input[id^="unscaled-proc-chance-"]`);
+                const multiStrikeCheckbox = row.querySelector(`input[id^="unscaled-doublestrike-"]`);
+                const onCritCheckbox = row.querySelector(`input[id^="unscaled-on-crit-"]`);
+
+                if (dmgInput && procInput && multiStrikeCheckbox && onCritCheckbox) {
+                    state.unscaledDamageRows.push({
+                        damage: dmgInput.value,
+                        procChance: procInput.value,
+                        doublestrike: multiStrikeCheckbox.checked,
+                        onCrit: onCritCheckbox.checked
+                    });
+                }
+            });
+
+
+            // Store scaled dice damage rows
+            state.scaledDiceDamageRows = [];
+            this.scaledDiceRowsContainer.querySelectorAll('.input-group-row').forEach(row => {
+                const baseDiceInput = row.querySelector(`input[id^="scaled-dice-base-"]`);
+                const scalingToggle = row.querySelector(`input[id^="scaled-dice-scaling-toggle-"]`);
+                const scalingPercentInput = row.querySelector(`input[id^="scaled-dice-scaling-percent-"]`);
+                const enabledCheckbox = row.querySelector(`input[id^="scaled-dice-enabled-"]`);
+                const procChanceInput = row.querySelector(`input[id^="scaled-dice-proc-chance-"]`);
+                if (baseDiceInput && scalingToggle && scalingPercentInput && enabledCheckbox && procChanceInput) {
+                    state.scaledDiceDamageRows.push({
+                        baseDice: baseDiceInput.value,
+                        enableScaling: scalingToggle.checked,
+                        procChance: procChanceInput.value,
+                        scalingPercent: scalingPercentInput.value,
+                        isEnabled: enabledCheckbox.checked
+                    });
+                }
+            });
+
+            return state;
+        }
+
+        // Retrieves the current name of the tab for this calculator instance
+        getTabName() {
+            const tab = document.querySelector(`.nav-tab[data-set="${this.setId}"] .tab-name`);
+            return tab ? tab.textContent : `Set ${this.setId}`;
+        }
+
+        setTabName(name) {
+            const tab = document.querySelector(`.nav-tab[data-set="${this.setId}"] .tab-name`);
+            if (tab) {
+                tab.textContent = name;
+            }
+        }
+
+        setState(state) {
+            if (!state) return;
+
+            // Clear only the dynamic rows, not the entire container.
+            // This preserves any static elements like headers or the "Dice Added" display.
+            this.unscaledRowsContainer.querySelectorAll('.input-group-row').forEach(row => row.remove());
+            this.scaledDiceRowsContainer.querySelectorAll('.input-group-row').forEach(row => {
+                // Don't remove the read-only display box
+                if (!row.classList.contains('read-only-display')) {
+                    row.remove();
+                }
+            });
+
+            const allInputs = document.querySelectorAll(`#calculator-set-${this.setId} input, #calculator-set-${this.setId} select`);
+            allInputs.forEach(input => {
+                const key = input.id.replace(`-set${this.setId}`, '');
+                if (state.hasOwnProperty(key)) {
+                    if (input.type === 'checkbox') {
+                        input.checked = state[key];
+                    } else {
+                        input.value = state[key];
+                    }
+                }
+            });
+
+            // Recreate unscaled damage rows from state
+            if (state.unscaledDamageRows) {
+                state.unscaledDamageRows.forEach(rowData => {
+                    this.addUnscaledDamageRow(new Event('dummy')); // Add a new empty row
+                    const newRow = this.unscaledRowsContainer.lastElementChild;
+                    // Find the inputs in the newly added row and set their values
+                    const idSuffix = this.idSuffix;
+                    newRow.querySelector(`input[id^="unscaled-damage-"]`).value = rowData.damage;
+                    newRow.querySelector(`input[id^="unscaled-proc-chance-"]`).value = rowData.procChance;
+                    newRow.querySelector(`input[id^="unscaled-doublestrike-"]`).checked = rowData.doublestrike;
+                    newRow.querySelector(`input[id^="unscaled-on-crit-"]`).checked = rowData.onCrit;
+                });
+            } else {
+                // If no unscaledDamageRows in state, but there were some default ones,
+                // we need to initialize them based on how many were saved implicitly.
+                // This handles cases where old saves without explicit rows still had default ones.
+                const unscaledDamageKeys = Object.keys(state).filter(k => k.startsWith('unscaled-damage-'));
+                let maxSavedUnscaledIdx = 0;
+                unscaledDamageKeys.forEach(key => {
+                    const idx = parseInt(key.match(/unscaled-damage-(\d+)/)[1], 10);
+                    if (idx > maxSavedUnscaledIdx) maxSavedUnscaledIdx = idx;
+                });
+
+                // Add default unscaled rows if they exist in the state, up to maxSavedUnscaledIdx
+                for (let i = 1; i <= maxSavedUnscaledIdx; i++) {
+                    if (state.hasOwnProperty(`unscaled-damage-${i}`)) {
+                        this.addUnscaledDamageRow(new Event('dummy'));
+                        const newRow = this.unscaledRowsContainer.lastElementChild;
+                        newRow.querySelector(`input[id^="unscaled-damage-"]`).value = state[`unscaled-damage-${i}`];
+                        newRow.querySelector(`input[id^="unscaled-proc-chance-"]`).value = state[`unscaled-proc-chance-${i}`];
+                        newRow.querySelector(`input[id^="unscaled-doublestrike-"]`).checked = state[`unscaled-doublestrike-${i}`];
+                        newRow.querySelector(`input[id^="unscaled-on-crit-"]`).checked = state[`unscaled-on-crit-${i}`];
+                    }
+                }
+            }
+
+
+            // Recreate scaled dice damage rows from state
+            if (state.scaledDiceDamageRows) {
+                state.scaledDiceDamageRows.forEach(rowData => {
+                    this.addScaledDiceDamageRow(new Event('dummy'));
+                    const newRow = this.scaledDiceRowsContainer.lastElementChild;
+                    newRow.querySelector(`input[id^="scaled-dice-base-"]`).value = rowData.baseDice;
+                    newRow.querySelector(`input[id^="scaled-dice-scaling-toggle-"]`).checked = rowData.enableScaling;
+                    newRow.querySelector(`input[id^="scaled-dice-enabled-"]`).checked = rowData.isEnabled;
+                    newRow.querySelector(`input[id^="scaled-dice-proc-chance-"]`).value = rowData.procChance || 100;
+                    newRow.querySelector(`input[id^="scaled-dice-scaling-percent-"]`).value = rowData.scalingPercent || 100;
+                });
+            }
+
+            // After setting state, recalculate to update results
             this.calculateDdoDamage();
+
+            // After all values are set, resize the inputs to fit the content
+            this.resizeAllAdaptiveInputs();
+        }
+
+        applyValueChange(inputId, value) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+
+            if (input.type === 'checkbox') {
+                input.checked = value;
+            } else {
+                input.value = value;
+            }
+            // We don't record an action here because this is part of an undo/redo operation.
+            // We just recalculate and save the new overall state.
+            this.handleInputChange();
         }
 
         updateSummaryHeader() {
