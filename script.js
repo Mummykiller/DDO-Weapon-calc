@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.modalCopyBtn = document.getElementById('modal-copy-btn');
             this.modalSaveFileBtn = document.getElementById('modal-save-file-btn');
             this.modalLoadBtn = document.getElementById('modal-load-btn');
+            this.modalLoadFileBtn = document.getElementById('modal-load-file-btn');
             this.modalFileInput = document.getElementById('modal-file-input');
             this.formatJsonBtn = document.getElementById('format-json-btn');
             this.formatSummaryBtn = document.getElementById('format-summary-btn');
@@ -529,6 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.modalCopyBtn.addEventListener('click', () => this.copyToClipboard());
             this.modalSaveFileBtn.addEventListener('click', () => this.saveToFile());
             this.modalLoadBtn.addEventListener('click', () => this.importFromText());
+            if (this.modalLoadFileBtn) this.modalLoadFileBtn.addEventListener('click', () => this.modalFileInput.click());
 
             // Trigger file input when "Load from File" is conceptually clicked
             this.modalFileInput.addEventListener('change', (e) => this.importFromFile(e));
@@ -548,6 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.modalCopyBtn.classList.remove('hidden');
             this.modalSaveFileBtn.classList.remove('hidden');
             this.modalLoadBtn.classList.add('hidden');
+            if (this.modalLoadFileBtn) this.modalLoadFileBtn.classList.add('hidden');
             this.modalFileInput.classList.add('hidden');
             document.querySelector('.modal-format-toggle').classList.remove('hidden');
 
@@ -573,21 +576,14 @@ document.addEventListener('DOMContentLoaded', () => {
             this.modalCopyBtn.classList.add('hidden');
             this.modalSaveFileBtn.classList.add('hidden');
             this.modalLoadBtn.classList.remove('hidden');
+            if (this.modalLoadFileBtn) this.modalLoadFileBtn.classList.remove('hidden');
             // We don't show the file input directly, but we'll trigger it.
             document.querySelector('.modal-format-toggle').classList.add('hidden');
-            // Let's repurpose the "Save to File" button to be "Load from File"
-            this.modalSaveFileBtn.textContent = 'Load from File';
-            this.modalSaveFileBtn.classList.remove('hidden');
-            this.modalSaveFileBtn.onclick = () => this.modalFileInput.click(); // Re-route click
-
             this.modalBackdrop.classList.remove('hidden');
         }
 
         hideModal() {
             this.modalBackdrop.classList.add('hidden');
-            // Reset the repurposed button
-            this.modalSaveFileBtn.textContent = 'Save to File';
-            this.modalSaveFileBtn.onclick = () => this.saveToFile();
         }
 
         getSetsAsJSON() {
